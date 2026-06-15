@@ -51,7 +51,7 @@ export default function Header({
       className="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-950/70 backdrop-blur-md shadow-sm transition-colors duration-300"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-18">
+        <div className="flex items-center justify-between h-[4.5rem]">
           {/* Logo */}
           <div 
             onClick={() => handleNavigate('home')} 

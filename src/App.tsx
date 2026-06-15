@@ -385,7 +385,7 @@ function AppContent() {
         />
       )}
 
-      <main className="flex-grow">
+      <main className="flex-grow pt-0">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentScreen + (selectedModelId || '')}
