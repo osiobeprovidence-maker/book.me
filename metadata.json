@@ -1,0 +1,8 @@
+{
+  "name": "Remix: BookMe Lite",
+  "description": "Premium model and talent booking platform for brands, photographers, and event organizers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

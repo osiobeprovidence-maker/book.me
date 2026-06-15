@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "The base account configuration for clients and models",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique user authentication ID" },
+        "name": { "type": "string", "description": "Full name of the user" },
+        "email": { "type": "string", "format": "email", "description": "Email address" },
+        "role": { "type": "string", "enum": ["client", "model"], "description": "Selected role of the user" },
+        "avatar": { "type": "string", "description": "Profile picture URL" },
+        "created_at": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "model": {
+      "title": "ModelProfile",
+      "description": "Specific details for modeling professionals",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique model profile ID" },
+        "user_id": { "type": "string", "description": "Associated user authentication ID" },
+        "bio": { "type": "string", "description": "Professional modeling bio" },
+        "gender": { "type": "string", "enum": ["Female", "Male", "Non-binary", "Other"], "description": "Gender identity" },
+        "age": { "type": "integer", "description": "Age of the model" },
+        "height": { "type": "integer", "description": "Height in centimeters" },
+        "location": { "type": "string", "description": "Current city or operating base" },
+        "daily_rate": { "type": "integer", "description": "Daily booking rate in USD" },
+        "experience_level": { "type": "string", "enum": ["New Face", "Rising Star", "Professional", "Top Model"], "description": "Experience tier" },
+        "created_at": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["id", "user_id", "bio", "gender", "age", "height", "location", "daily_rate", "experience_level"]
+    },
+    "portfolio_image": {
+      "title": "PortfolioImage",
+      "description": "Representative photographs for model modeling portfolios",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique portfolio image ID" },
+        "model_id": { "type": "string", "description": "Associated model ID" },
+        "image_url": { "type": "string", "description": "Secure image URL" },
+        "created_at": { "type": "string", "format": "date-time", "description": "Upload timestamp" }
+      },
+      "required": ["id", "model_id", "image_url"]
+    },
+    "booking": {
+      "title": "Booking",
+      "description": "Model booking reservation details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique booking reservation ID" },
+        "client_id": { "type": "string", "description": "ID of client raising booking request" },
+        "model_id": { "type": "string", "description": "ID of scheduled model" },
+        "booking_date": { "type": "string", "format": "date", "description": "Target date of booking" },
+        "event_name": { "type": "string", "description": "Name/Title of shoot or event" },
+        "event_location": { "type": "string", "description": "Location venue" },
+        "additional_notes": { "type": "string", "description": "Additional logistical specifications" },
+        "status": { "type": "string", "enum": ["Pending", "Accepted", "Rejected"], "description": "Booking request current status" },
+        "created_at": { "type": "string", "format": "date-time", "description": "Time the booking was created" }
+      },
+      "required": ["id", "client_id", "model_id", "booking_date", "event_name", "event_location", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profile records mapped to auth ID"
+    },
+    "/models/{modelId}": {
+      "schema": "model",
+      "description": "Secondary profile data for models"
+    },
+    "/portfolio_images/{imageId}": {
+      "schema": "portfolio_image",
+      "description": "Individual modeling portfolio gallery files"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "booking",
+      "description": "Bookings submitted by clients to models"
+    }
+  }
+}
