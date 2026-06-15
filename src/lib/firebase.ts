@@ -21,35 +21,52 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
+const FIREBASE_ENABLED = !!firebaseConfig.apiKey;
+
+let app: ReturnType<typeof initializeApp> | null = null;
+let auth: ReturnType<typeof getAuth> | null = null;
+let googleProvider: GoogleAuthProvider | null = null;
+
+if (FIREBASE_ENABLED) {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  googleProvider = new GoogleAuthProvider();
+}
 
 export async function signUpWithEmail(name: string, email: string, password: string) {
+  if (!auth) throw new Error('Firebase not configured');
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(cred.user, { displayName: name });
   return cred.user;
 }
 
 export async function loginWithEmail(email: string, password: string) {
+  if (!auth) throw new Error('Firebase not configured');
   const cred = await signInWithEmailAndPassword(auth, email, password);
   return cred.user;
 }
 
 export async function loginWithGoogle() {
+  if (!auth || !googleProvider) throw new Error('Firebase not configured');
   const cred = await signInWithPopup(auth, googleProvider);
   return cred.user;
 }
 
 export async function logout() {
+  if (!auth) return;
   await signOut(auth);
 }
 
 export async function resetPassword(email: string) {
+  if (!auth) throw new Error('Firebase not configured');
   await sendPasswordResetEmail(auth, email);
 }
 
 export function onAuthChange(callback: (user: FirebaseUser | null) => void) {
+  if (!auth) {
+    callback(null);
+    return () => {};
+  }
   return onAuthStateChanged(auth, callback);
 }
 
