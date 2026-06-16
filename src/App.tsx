@@ -17,6 +17,8 @@ import OpportunityWallView from './views/OpportunityWallView';
 import AuthView from './views/AuthView';
 import SettingsView from './views/SettingsView';
 import AdminView from './views/AdminView';
+import BusinessProfileSetupView from './views/BusinessProfileSetupView';
+import OpportunityDetailView from './views/OpportunityDetailView';
 import BookingModal from './components/BookingModal';
 import { AnimatePresence, motion } from 'motion/react';
 
@@ -28,6 +30,7 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('home');
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
+  const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [users, setUsers] = useState<User[]>([]);
@@ -489,7 +492,10 @@ function AppContent() {
                   setSelectedBusinessId(null);
                   setCurrentScreen('opportunities');
                 }}
-                onViewOpportunity={(opp) => {}}
+                onViewOpportunity={(opp) => {
+                  setSelectedOpportunity(opp);
+                  setCurrentScreen('opportunity-detail');
+                }}
                 onApplyToOpportunity={(opp) => handleApplyToOpportunity({ opportunity_id: opp.id })}
                 currentUser={currentUser}
               />
@@ -567,6 +573,31 @@ function AppContent() {
                 initialMode={currentScreen}
                 onAuthenticate={handleAuthenticate}
                 setCurrentScreen={setCurrentScreen}
+              />
+            )}
+
+            {currentScreen === 'business-profile-setup' && currentUser && (
+              <BusinessProfileSetupView
+                currentUser={currentUser}
+                onSave={(profile) => {
+                  handleUpdateBusinessProfile(profile);
+                  setCurrentScreen('client-dashboard');
+                }}
+                onSkip={() => setCurrentScreen('client-dashboard')}
+                setCurrentScreen={setCurrentScreen}
+              />
+            )}
+
+            {currentScreen === 'opportunity-detail' && selectedOpportunity && (
+              <OpportunityDetailView
+                opportunity={selectedOpportunity}
+                currentUser={currentUser}
+                onApply={(opp) => handleApplyToOpportunity({ opportunity_id: opp.id })}
+                onBack={() => setCurrentScreen('opportunities')}
+                onViewBrand={(businessId) => {
+                  setSelectedBusinessId(businessId);
+                  setCurrentScreen('business-profile');
+                }}
               />
             )}
           </motion.div>

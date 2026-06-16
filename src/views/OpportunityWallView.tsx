@@ -81,9 +81,9 @@ export default function OpportunityWallView({
 
 
   return (
-    <div className="min-h-screen bg-[#FDFDFF] dark:bg-slate-950 pt-18 pb-20">
+    <div className="min-h-screen bg-[#FDFDFF] dark:bg-slate-950 pb-20">
       {/* Editorial Header */}
-      <section className="relative overflow-hidden bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 pt-16 pb-20 px-4">
+      <section className="relative overflow-hidden bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 pt-8 md:pt-16 pb-20 px-4">
         {/* Background Accents */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-20 dark:opacity-40">
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-indigo-500 rounded-full blur-[120px]" />
