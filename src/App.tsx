@@ -171,6 +171,23 @@ function AppContent() {
         );
       }
     } else if (authenticatedUser.role === 'client' && profileSpecs) {
+      const newProfile: BusinessProfile = {
+        user_id: authenticatedUser.id,
+        brand_name: profileSpecs.brandName || authenticatedUser.name + ' Agency',
+        description: profileSpecs.bio || '',
+        industry: profileSpecs.sector || '',
+        website: profileSpecs.website || '',
+        address: profileSpecs.location || '',
+        is_verified: false,
+      };
+      setBusinessProfiles(prev => {
+        const exists = prev.find(p => p.user_id === authenticatedUser.id);
+        const updated = exists
+          ? prev.map(p => p.user_id === authenticatedUser.id ? newProfile : p)
+          : [...prev, newProfile];
+        localDB.saveBusinessProfiles(updated);
+        return updated;
+      });
       upsertBusinessProfileInConvex({
         user_id: authenticatedUser.id,
         brand_name: profileSpecs.brandName || authenticatedUser.name + ' Agency',
@@ -185,12 +202,14 @@ function AppContent() {
 
     success(`Logged in as ${authenticatedUser.name}`);
 
-    if (authenticatedUser.role === 'client') {
-      setCurrentScreen('client-dashboard');
-    } else if (authenticatedUser.role === 'admin') {
+    if (authenticatedUser.role === 'admin') {
       setCurrentScreen('admin');
-    } else {
+    } else if (authenticatedUser.role === 'model') {
       setCurrentScreen('model-dashboard');
+    } else if (authenticatedUser.role === 'client') {
+      const stored = localDB.getBusinessProfiles();
+      const hasProfile = stored.some((p: any) => p.user_id === authenticatedUser.id);
+      setCurrentScreen(hasProfile ? 'client-dashboard' : 'business-profile-setup');
     }
   };
 
@@ -545,6 +564,8 @@ function AppContent() {
                   if (currentUser.role === 'client') setCurrentScreen('client-dashboard');
                   else setCurrentScreen('model-dashboard');
                 }}
+                darkMode={darkMode}
+                onToggleDarkMode={() => setDarkMode(!darkMode)}
               />
             )}
 
