@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { User, Booking, ModelProfile, PortfolioImage, AppScreen, Application, Opportunity } from '../types';
 import EditProfileModal from '../components/EditProfileModal';
 import { 
   Compass, Award, MapPin, Ruler, Inbox, CheckCircle2, XCircle, 
   Settings2, Plus, Sparkles, Image as ImageIcon, CalendarCheck, HelpCircle, FileCheck, Trash, PlusCircle,
-  Briefcase, Send, Clock, AlertCircle, Share2
+  Briefcase, Send, Clock, AlertCircle, Share2, Upload
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -44,11 +44,13 @@ export default function DashboardModelView({
   setSelectedModelId,
   setCurrentScreen
 }: DashboardModelViewProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [newImageUrl, setNewImageUrl] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [activeTab, setActiveTab] = useState<'requests' | 'applications'>('requests');
   const [uploadProgressSim, setUploadProgressSim] = useState(false);
+  const [fileUploading, setFileUploading] = useState(false);
 
   // Model profile specific lookup
   const modelProfile = useMemo(() => {
@@ -75,6 +77,23 @@ export default function DashboardModelView({
     const pendingCount = applications.filter(a => a.status === 'Pending').length;
     return { accepted: acceptedCount, pending: pendingCount, totalApps: applications.length };
   }, [applications]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setUploadError('Please select an image file.'); return; }
+    if (file.size > 5 * 1024 * 1024) { setUploadError('Image must be under 5MB.'); return; }
+    setFileUploading(true);
+    setUploadError('');
+    const reader = new FileReader();
+    reader.onload = () => {
+      onAddPortfolioImage(reader.result as string);
+      setFileUploading(false);
+    };
+    reader.onerror = () => { setUploadError('Failed to read file.'); setFileUploading(false); };
+    reader.readAsDataURL(file);
+    if (e.target) e.target.value = '';
+  };
 
   // Simulated upload
   const handleSimulateUpload = (e: React.FormEvent) => {
@@ -273,17 +292,36 @@ export default function DashboardModelView({
                      </div>
                    ))}
                 </div>
-                <form onSubmit={handleSimulateUpload} className="space-y-3">
+                {uploadError && <p className="text-[11px] text-rose-500 font-medium">{uploadError}</p>}
+                <form onSubmit={handleSimulateUpload} className="space-y-2">
                    <input 
                       value={newImageUrl}
-                      onChange={e => setNewImageUrl(e.target.value)}
-                      placeholder="Add image URL..."
+                      onChange={e => { setNewImageUrl(e.target.value); setUploadError(''); }}
+                      placeholder="Paste image URL..."
                       className="w-full px-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
                    />
                    <button type="submit" disabled={uploadProgressSim} className="w-full py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl cursor-pointer">
-                      {uploadProgressSim ? 'Uploading...' : 'Add Photo'}
+                      {uploadProgressSim ? 'Adding...' : 'Add from URL'}
                    </button>
                 </form>
+                <div className="relative">
+                   <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-slate-200 dark:border-slate-800" />
+                   </div>
+                   <div className="relative flex justify-center">
+                      <span className="px-2 text-[10px] text-slate-400 bg-white dark:bg-slate-900 font-medium">or</span>
+                   </div>
+                </div>
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={fileUploading}
+                  className="w-full py-2.5 border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-indigo-400 text-slate-500 text-xs font-bold rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  <Upload className="w-4 h-4" />
+                  {fileUploading ? 'Uploading...' : 'Upload from Device'}
+                </button>
             </section>
 
             <div className="bg-indigo-600 rounded-3xl p-6 text-white shadow-xl shadow-indigo-600/20">

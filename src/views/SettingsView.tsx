@@ -8,20 +8,26 @@ import { User, SubscriptionPlan } from '../types';
 import { 
   User as UserIcon, Lock, Bell, CreditCard, Shield, 
   ChevronRight, ArrowLeft, Check, Sparkles, Globe,
-  Zap, Crown, Building
+  Zap, Crown, Building, Moon, Sun
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { initializePayment, generateReference } from '../lib/paystack';
+import ImageUploader from '../components/ImageUploader';
 
 interface SettingsViewProps {
   currentUser: User | null;
   onUpdateUser: (userData: Partial<User>) => void;
   onBack: () => void;
+  darkMode: boolean;
+  onToggleDarkMode: () => void;
 }
 
-export default function SettingsView({ currentUser, onUpdateUser, onBack }: SettingsViewProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'billing' | 'notifications' | 'security'>('profile');
+export default function SettingsView({ currentUser, onUpdateUser, onBack, darkMode, onToggleDarkMode }: SettingsViewProps) {
+  const [activeTab, setActiveTab] = useState<'profile' | 'appearance' | 'billing' | 'notifications' | 'security'>('profile');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [displayName, setDisplayName] = useState(currentUser?.name || '');
+  const [displayEmail, setDisplayEmail] = useState(currentUser?.email || '');
+  const [avatarDataUrl, setAvatarDataUrl] = useState('');
 
   const plans: { name: SubscriptionPlan, price: string, features: string[], icon: any, color: string }[] = [
     { 
@@ -78,6 +84,7 @@ export default function SettingsView({ currentUser, onUpdateUser, onBack }: Sett
           <div className="lg:col-span-4 space-y-2">
             {[
               { id: 'profile', label: 'Public Profile', icon: UserIcon },
+              { id: 'appearance', label: 'Appearance', icon: Moon },
               { id: 'billing', label: 'Subscription & Billing', icon: CreditCard },
               { id: 'security', label: 'Login & Security', icon: Lock },
               { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -115,11 +122,12 @@ export default function SettingsView({ currentUser, onUpdateUser, onBack }: Sett
 
                   <div className="space-y-6">
                     <div className="flex items-center gap-6">
-                      <div className="w-20 h-20 rounded-3xl overflow-hidden bg-slate-100 dark:bg-slate-800 relative group">
-                        <img src={currentUser.avatar} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                          <span className="text-[10px] text-white font-black uppercase">Edit</span>
-                        </div>
+                      <div className="w-20 h-20 shrink-0">
+                        <ImageUploader
+                          currentImage={avatarDataUrl || currentUser.avatar}
+                          onImageSelect={setAvatarDataUrl}
+                          aspectRatio="square"
+                        />
                       </div>
                       <div className="space-y-1">
                         <h4 className="font-bold">{currentUser.name}</h4>
@@ -130,24 +138,89 @@ export default function SettingsView({ currentUser, onUpdateUser, onBack }: Sett
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Full Name</label>
-                        <input 
-                          defaultValue={currentUser.name}
+                        <input
+                          value={displayName}
+                          onChange={e => setDisplayName(e.target.value)}
                           className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 transition-all"
                         />
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Email Address</label>
-                        <input 
-                          defaultValue={currentUser.email}
+                        <input
+                          value={displayEmail}
+                          onChange={e => setDisplayEmail(e.target.value)}
                           className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl text-sm font-medium outline-none focus:border-indigo-500 transition-all"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <button className="px-8 py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
-                    Save Changes
+                  <button
+                    onClick={() => {
+                      setIsUpdating(true);
+                      const updates: Partial<User> = {};
+                      if (displayName !== currentUser.name) updates.name = displayName;
+                      if (displayEmail !== currentUser.email) updates.email = displayEmail;
+                      if (avatarDataUrl) updates.avatar = avatarDataUrl;
+                      if (Object.keys(updates).length > 0) onUpdateUser(updates);
+                      setIsUpdating(false);
+                    }}
+                    disabled={isUpdating}
+                    className="px-8 py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {isUpdating ? 'Saving...' : 'Save Changes'}
                   </button>
+                </div>
+              )}
+
+              {activeTab === 'appearance' && (
+                <div className="space-y-8">
+                  <div>
+                    <h2 className="text-xl font-black mb-1">Appearance</h2>
+                    <p className="text-xs text-slate-500 font-medium tracking-tight">Customize how the platform looks for you.</p>
+                  </div>
+
+                  <div className="p-6 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        {darkMode ? (
+                          <Moon className="w-6 h-6 text-indigo-500" />
+                        ) : (
+                          <Sun className="w-6 h-6 text-amber-500" />
+                        )}
+                        <div>
+                          <p className="text-sm font-bold">Dark Mode</p>
+                          <p className="text-[10px] text-slate-500 font-medium">{darkMode ? 'Dark theme active' : 'Light theme active'}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={onToggleDarkMode}
+                        className={`relative w-14 h-7 rounded-full transition-colors cursor-pointer ${
+                          darkMode ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'
+                        }`}
+                      >
+                        <div
+                          className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm transition-all ${
+                            darkMode ? 'left-8' : 'left-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-6 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <h3 className="text-xs font-black uppercase tracking-widest mb-3">Preview</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">Light</p>
+                        <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded mt-2" />
+                      </div>
+                      <div className="p-4 rounded-xl bg-slate-900 dark:bg-white border border-slate-800 dark:border-slate-200">
+                        <p className="text-xs font-bold text-white dark:text-slate-900">Dark</p>
+                        <div className="h-2 w-full bg-slate-700 dark:bg-slate-200 rounded mt-2" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 

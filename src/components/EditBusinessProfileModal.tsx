@@ -5,7 +5,8 @@
 
 import React, { useState } from 'react';
 import { BusinessProfile } from '../types';
-import { X, Building2, Globe, MapPin, Film, Linkedin, Instagram, Twitter } from 'lucide-react';
+import { X, Building2, Globe, MapPin, Film, Linkedin, Instagram, Twitter, Upload } from 'lucide-react';
+import ImageUploader from './ImageUploader';
 
 interface EditBusinessProfileModalProps {
   isOpen: boolean;
@@ -122,14 +123,24 @@ export default function EditBusinessProfileModal({
           </div>
 
           <div className="space-y-4">
-             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Cover Image URL</label>
-             <input 
-               type="url"
-               value={formData.cover_image}
-               onChange={e => setFormData({...formData, cover_image: e.target.value})}
-               className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:border-indigo-500 transition-all text-sm font-bold dark:text-white"
-               placeholder="Paste high-res editorial image URL..."
-             />
+             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Cover Image</label>
+             <div className="max-w-xs">
+               <ImageUploader
+                 currentImage={formData.cover_image}
+                 onImageSelect={(base64) => setFormData({...formData, cover_image: base64})}
+                 aspectRatio="landscape"
+               />
+             </div>
+             <div className="relative">
+               <Upload className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+               <input 
+                 type="url"
+                 value={formData.cover_image}
+                 onChange={e => setFormData({...formData, cover_image: e.target.value})}
+                 className="w-full pl-12 pr-6 py-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl outline-none focus:border-indigo-500 transition-all text-sm font-bold dark:text-white"
+                 placeholder="Or paste image URL..."
+               />
+             </div>
           </div>
 
           <div className="pt-4">

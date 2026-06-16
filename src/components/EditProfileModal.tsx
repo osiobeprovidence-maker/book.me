@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { ModelProfile } from '../types';
 import { X, Save, ShieldCheck, MapPin, DollarSign, Award, Ruler, Sparkles } from 'lucide-react';
+import ImageUploader from './ImageUploader';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export default function EditProfileModal({
   const [experienceLevel, setExperienceLevel] = useState<'New Face' | 'Rising Star' | 'Professional' | 'Top Model'>(
     profile.experience_level || 'New Face'
   );
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatar || '');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -64,7 +66,8 @@ export default function EditProfileModal({
         height: Number(height),
         age: Number(age),
         gender,
-        experience_level: experienceLevel
+        experience_level: experienceLevel,
+        ...(avatarUrl !== profile.avatar ? { avatar: avatarUrl } : {}),
       });
       setSubmitting(false);
       onClose();
@@ -110,6 +113,21 @@ export default function EditProfileModal({
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
           
+          {/* Avatar */}
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 shrink-0">
+              <ImageUploader
+                currentImage={avatarUrl}
+                onImageSelect={setAvatarUrl}
+                aspectRatio="square"
+              />
+            </div>
+            <div>
+              <p className="text-sm font-bold dark:text-white">Profile Photo</p>
+              <p className="text-[11px] text-slate-400 font-medium">Upload a professional headshot</p>
+            </div>
+          </div>
+
           {/* Bio statement */}
           <div>
             <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2">
