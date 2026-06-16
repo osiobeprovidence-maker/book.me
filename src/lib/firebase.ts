@@ -7,6 +7,8 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   sendPasswordResetEmail,
   updateProfile,
   User as FirebaseUser,
@@ -33,6 +35,15 @@ if (FIREBASE_ENABLED) {
   googleProvider = new GoogleAuthProvider();
 }
 
+export function getFirebaseAuth() {
+  return auth;
+}
+
+export function getRedirectResultHandler() {
+  if (!auth) return Promise.resolve(null);
+  return getRedirectResult(auth);
+}
+
 export async function signUpWithEmail(name: string, email: string, password: string) {
   if (!auth) throw new Error('Firebase not configured');
   const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -48,8 +59,16 @@ export async function loginWithEmail(email: string, password: string) {
 
 export async function loginWithGoogle() {
   if (!auth || !googleProvider) throw new Error('Firebase not configured');
-  const cred = await signInWithPopup(auth, googleProvider);
-  return cred.user;
+  try {
+    const cred = await signInWithPopup(auth, googleProvider);
+    return cred.user;
+  } catch (err: any) {
+    if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/popup-closed-by-user') {
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    }
+    throw err;
+  }
 }
 
 export async function logout() {
@@ -82,4 +101,21 @@ export function mapFirebaseUser(firebaseUser: FirebaseUser): {
     email: firebaseUser.email || '',
     avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
   };
+}
+
+export function getFirebaseErrorMessage(err: any): string {
+  const code = err?.code || '';
+  const messages: Record<string, string> = {
+    'auth/email-already-in-use': 'This email is already registered. Try logging in instead.',
+    'auth/invalid-email': 'Invalid email format.',
+    'auth/weak-password': 'Password must be at least 6 characters.',
+    'auth/user-not-found': 'No account found with this email.',
+    'auth/wrong-password': 'Incorrect password.',
+    'auth/too-many-requests': 'Too many attempts. Try again later.',
+    'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
+    'auth/popup-blocked': 'Popup was blocked. Try again or use email sign-in.',
+    'auth/network-request-failed': 'Network error. Check your connection.',
+    'auth/invalid-credential': 'Invalid email or password.',
+  };
+  return messages[code] || err?.message || 'Authentication failed. Please try again.';
 }

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppScreen, UserRole, User } from '../types';
 import { 
   Camera, Briefcase, Lock, Mail, User as UserIcon, Sparkles, Key, 
   AlertCircle, RefreshCw, Globe, Award, Ruler, Check, ChevronRight, 
   ArrowLeft, Coins, CheckCircle2, ShieldCheck, MapPin
 } from 'lucide-react';
-import { signUpWithEmail, loginWithEmail, loginWithGoogle, resetPassword } from '../lib/firebase';
+import { signUpWithEmail, loginWithEmail, loginWithGoogle, resetPassword, getFirebaseErrorMessage, getRedirectResultHandler } from '../lib/firebase';
 
 const FIREBASE_ENABLED = !!import.meta.env.VITE_FIREBASE_API_KEY;
 
@@ -46,6 +46,32 @@ export default function AuthView({
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Handle Google redirect result on mount
+  useEffect(() => {
+    if (!FIREBASE_ENABLED) return;
+    getRedirectResultHandler().then(async (result) => {
+      if (result?.user) {
+        const fbUser = result.user;
+        const authenticatedUser: User = {
+          id: fbUser.uid,
+          name: fbUser.displayName || name || 'User',
+          email: fbUser.email || email,
+          role,
+          avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUser.uid}`,
+          created_at: new Date().toISOString(),
+          firebaseUid: fbUser.uid,
+        };
+        if (mode === 'login') {
+          onAuthenticate(authenticatedUser);
+        } else {
+          setEmail(fbUser.email || '');
+          setName(fbUser.displayName || '');
+          setSubStage('profile-form');
+        }
+      }
+    }).catch(() => {});
+  }, []);
+
   const handleGoogleSSO = async () => {
     setErrorMsg('');
     setSuccessMsg('');
@@ -75,7 +101,7 @@ export default function AuthView({
       }
       setLoading(false);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Google authentication failed');
+      setErrorMsg(getFirebaseErrorMessage(err));
       setLoading(false);
     }
   };
@@ -139,7 +165,7 @@ export default function AuthView({
         onAuthenticate(authenticatedUser);
         setLoading(false);
       } catch (err: any) {
-        setErrorMsg(err.message || 'Login failed. Check your credentials.');
+        setErrorMsg(getFirebaseErrorMessage(err));
         setLoading(false);
       }
     } else {
@@ -195,7 +221,7 @@ export default function AuthView({
       onAuthenticate(authenticatedUser, customSpecs);
       setLoading(false);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Account creation failed.');
+      setErrorMsg(getFirebaseErrorMessage(err));
       setLoading(false);
     }
   };
