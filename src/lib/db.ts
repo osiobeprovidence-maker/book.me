@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { SEED_MODELS, SEED_PORTFOLIO_IMAGES, SEED_OPPORTUNITIES } from '../data/seedData';
+
 // Define LocalStorage Namespaces for high-fidelity client-only state
 const LS_KEYS = {
   USERS: 'bookme_lite_users',
@@ -27,11 +29,8 @@ export const localDB = {
   getModels: () => {
     const data = localStorage.getItem(LS_KEYS.MODELS);
     if (!data) {
-      // Seed initial models
-      import('../data/seedData').then(({ SEED_MODELS }) => {
-        localStorage.setItem(LS_KEYS.MODELS, JSON.stringify(SEED_MODELS));
-      });
-      return [];
+      localStorage.setItem(LS_KEYS.MODELS, JSON.stringify(SEED_MODELS));
+      return SEED_MODELS;
     }
     return JSON.parse(data);
   },
@@ -41,10 +40,8 @@ export const localDB = {
   getPortfolio: () => {
     const data = localStorage.getItem(LS_KEYS.PORTFOLIO);
     if (!data) {
-      import('../data/seedData').then(({ SEED_PORTFOLIO_IMAGES }) => {
-        localStorage.setItem(LS_KEYS.PORTFOLIO, JSON.stringify(SEED_PORTFOLIO_IMAGES));
-      });
-      return [];
+      localStorage.setItem(LS_KEYS.PORTFOLIO, JSON.stringify(SEED_PORTFOLIO_IMAGES));
+      return SEED_PORTFOLIO_IMAGES;
     }
     return JSON.parse(data);
   },
@@ -61,10 +58,8 @@ export const localDB = {
   getOpportunities: () => {
     const data = localStorage.getItem(LS_KEYS.OPPORTUNITIES);
     if (!data) {
-      import('../data/seedData').then(({ SEED_OPPORTUNITIES }) => {
-        localStorage.setItem(LS_KEYS.OPPORTUNITIES, JSON.stringify(SEED_OPPORTUNITIES));
-      });
-      return [];
+      localStorage.setItem(LS_KEYS.OPPORTUNITIES, JSON.stringify(SEED_OPPORTUNITIES));
+      return SEED_OPPORTUNITIES;
     }
     return JSON.parse(data);
   },
@@ -97,15 +92,3 @@ export const localDB = {
     }
   }
 };
-
-// Initialize seed data if they don't exist
-if (!localStorage.getItem(LS_KEYS.MODELS)) {
-  import('../data/seedData').then(({ SEED_MODELS }) => {
-    localStorage.setItem(LS_KEYS.MODELS, JSON.stringify(SEED_MODELS));
-  });
-}
-if (!localStorage.getItem(LS_KEYS.PORTFOLIO)) {
-  import('../data/seedData').then(({ SEED_PORTFOLIO_IMAGES }) => {
-    localStorage.setItem(LS_KEYS.PORTFOLIO, JSON.stringify(SEED_PORTFOLIO_IMAGES));
-  });
-}
