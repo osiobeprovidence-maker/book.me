@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState } from 'react';
 import { AppScreen, UserRole, User } from '../types';
 import { 
@@ -10,6 +5,9 @@ import {
   AlertCircle, RefreshCw, Globe, Award, Ruler, Check, ChevronRight, 
   ArrowLeft, Coins, CheckCircle2, ShieldCheck, MapPin
 } from 'lucide-react';
+import { signUpWithEmail, loginWithEmail, loginWithGoogle, resetPassword } from '../lib/firebase';
+
+const FIREBASE_ENABLED = !!import.meta.env.VITE_FIREBASE_API_KEY;
 
 interface AuthViewProps {
   initialMode: 'login' | 'signup';
@@ -25,175 +23,222 @@ export default function AuthView({
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>(initialMode);
   const [subStage, setSubStage] = useState<'credentials' | 'profile-form'>('credentials');
   
-  // Account Information (Step 1)
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<UserRole>('client');
-  const [isGoogleAuth, setIsGoogleAuth] = useState(false);
   
-  // Profile Information (Step 2 - Model specs)
   const [age, setAge] = useState<number>(23);
   const [height, setHeight] = useState<number>(175);
-  const [gender, setGender] = useState<'Female' | 'Male' | 'Non-binary' | 'Other'>('Female');
-  const [experienceLevel, setExperienceLevel] = useState<'New Face' | 'Rising Star' | 'Professional' | 'Top Model'>('New Face');
+  const [gender, setGender] = useState<string>('Female');
+  const [experienceLevel, setExperienceLevel] = useState<string>('New Face');
   const [location, setLocation] = useState('Paris, FR');
   const [dailyRate, setDailyRate] = useState<number>(1200);
-  const [modelBio, setModelBio] = useState('Professional talent with runway, commercial and high-fashion experience. Ready for editorial bookings.');
+  const [modelBio, setModelBio] = useState('Professional talent with runway, commercial and high-fashion experience.');
 
-  // Profile Information (Step 2 - Corporate Client specs)
   const [brandName, setBrandName] = useState('');
   const [website, setWebsite] = useState('');
   const [sector, setSector] = useState('Fashion Design House');
   const [clientLocation, setClientLocation] = useState('Paris, FR');
-  const [clientBio, setClientBio] = useState('Luxury curation group booking premium global campaigns and visual runway productions.');
+  const [clientBio, setClientBio] = useState('Luxury curation group booking premium global campaigns.');
 
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Simulated Google SSO triggers
-  const handleGoogleSSO = () => {
+  const handleGoogleSSO = async () => {
     setErrorMsg('');
     setSuccessMsg('');
-    setLoading(true);
-
-    setTimeout(() => {
-      setIsGoogleAuth(true);
-      // Pre-fill standard Google credentials info
-      const mockGoogleEmail = 'clintpete06@gmail.com';
-      const mockGoogleName = 'Clint Peterson';
-      setEmail(mockGoogleEmail);
-      setName(mockGoogleName);
+    if (!FIREBASE_ENABLED) {
+      setErrorMsg('Firebase is not configured. Add VITE_FIREBASE_API_KEY to your .env file.');
+      return;
+    }
+    try {
+      setLoading(true);
+      const fbUser = await loginWithGoogle();
+      const authenticatedUser: User = {
+        id: fbUser.uid,
+        name: fbUser.displayName || name || 'User',
+        email: fbUser.email || email,
+        role: role,
+        avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUser.uid}`,
+        created_at: new Date().toISOString(),
+        firebaseUid: fbUser.uid,
+      };
 
       if (mode === 'login') {
-        const authenticatedUser: User = {
-          id: 'google_u_108',
-          name: mockGoogleName,
-          email: mockGoogleEmail,
-          role: 'client', // Defaults to client on quick login 
-          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
-          created_at: new Date().toISOString()
-        };
         onAuthenticate(authenticatedUser);
-        setSuccessMsg('Google Single Sign-On Authenticated Successfully.');
-        setLoading(false);
       } else {
-        // Sign-up mode: verify Step 1 credentials and progress immediately to Step 2 profile setup form
-        setSuccessMsg('Google credentials authenticated. Let\'s complete your profile setup next.');
-        setLoading(false);
+        setEmail(fbUser.email || '');
+        setName(fbUser.displayName || '');
         setSubStage('profile-form');
       }
-    }, 1100);
+      setLoading(false);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Google authentication failed');
+      setLoading(false);
+    }
   };
 
-  const handleStep1Submit = (e: React.FormEvent) => {
+  const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
 
     if (mode === 'forgot') {
       if (!email.trim()) {
-        setErrorMsg('Please specify your registered email address.');
+        setErrorMsg('Please enter your registered email address.');
         return;
       }
-      setLoading(true);
-      setTimeout(() => {
-        setSuccessMsg(`A password recovery token was successfully dispatched using Resend Mail to ${email.trim()}.`);
+      if (!FIREBASE_ENABLED) {
+        setSuccessMsg(`Password reset link sent to ${email.trim()} (simulated).`);
+        return;
+      }
+      try {
+        setLoading(true);
+        await resetPassword(email.trim());
+        setSuccessMsg(`Password reset link sent to ${email.trim()}.`);
         setLoading(false);
-      }, 900);
+      } catch (err: any) {
+        setErrorMsg(err.message || 'Failed to send reset email');
+        setLoading(false);
+      }
       return;
     }
 
-    // Step 1 Validation
-    if (!email.trim() || (!isGoogleAuth && !password)) {
-      setErrorMsg('Please complete all credential parameters.');
+    if (!email.trim() || !password) {
+      setErrorMsg('Please complete all credential fields.');
       return;
     }
-    if (!isGoogleAuth && password.length < 6) {
-      setErrorMsg('Password credentials must contain at least 6 characters.');
+    if (password.length < 6) {
+      setErrorMsg('Password must be at least 6 characters.');
       return;
     }
     if (!name.trim()) {
-      setErrorMsg('Full name credential check is required.');
+      setErrorMsg('Full name is required.');
       return;
     }
 
     if (mode === 'login') {
-      // Login mode proceeds straight to auth
-      setLoading(true);
-      setTimeout(() => {
-        let finalAvatar = role === 'model' 
-          ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150' 
-          : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150';
-
+      if (!FIREBASE_ENABLED) {
+        setErrorMsg('Firebase is not configured. Use demo accounts or add Firebase credentials.');
+        return;
+      }
+      try {
+        setLoading(true);
+        const fbUser = await loginWithEmail(email.trim(), password);
         const authenticatedUser: User = {
-          id: 'u_' + Math.random().toString(36).substring(2, 9),
+          id: fbUser.uid,
           name: name.trim(),
           email: email.trim().toLowerCase(),
           role: role,
-          avatar: finalAvatar,
-          created_at: new Date().toISOString()
+          avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUser.uid}`,
+          created_at: new Date().toISOString(),
+          firebaseUid: fbUser.uid,
         };
         onAuthenticate(authenticatedUser);
         setLoading(false);
-      }, 900);
+      } catch (err: any) {
+        setErrorMsg(err.message || 'Login failed. Check your credentials.');
+        setLoading(false);
+      }
     } else {
-      // Signup mode transitions to Step 2 Form to let user customize their profile specs!
       setSubStage('profile-form');
     }
   };
 
-  const handleStep2Submit = (e: React.FormEvent) => {
+  const handleStep2Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setLoading(true);
 
-    setTimeout(() => {
-      const mockId = 'u_' + Math.random().toString(36).substring(2, 9);
-      
-      let finalAvatar = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'; // standard client
-      if (role === 'model') {
-        finalAvatar = gender === 'Male' 
-          ? 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150' 
-          : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150'; // model demo headshots
+    try {
+      let fbUser: any = null;
+
+      if (FIREBASE_ENABLED) {
+        fbUser = await signUpWithEmail(name.trim(), email.trim().toLowerCase(), password);
       }
 
+      const uid = fbUser?.uid || 'u_' + Math.random().toString(36).substring(2, 9);
+      const avatar = fbUser?.photoURL || (
+        role === 'model'
+          ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150'
+          : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'
+      );
+
       const authenticatedUser: User = {
-        id: mockId,
+        id: uid,
         name: name.trim(),
         email: email.trim().toLowerCase(),
         role: role,
-        avatar: finalAvatar,
-        created_at: new Date().toISOString()
+        avatar,
+        created_at: new Date().toISOString(),
+        firebaseUid: uid,
       };
 
-      // Custom Profile Specs to pass to App state for initial bootstrap
       const customSpecs = role === 'model' ? {
-        bio: modelBio.trim() || 'Professional model registered on BookMe.',
+        bio: modelBio.trim(),
         age: Number(age),
         height: Number(height),
-        gender: gender,
+        gender,
         location: location.trim(),
         daily_rate: Number(dailyRate),
-        experience_level: experienceLevel
+        experience_level: experienceLevel,
       } : {
         brandName: brandName.trim() || name.trim() + ' Agency',
         website: website.trim(),
-        sector: sector,
+        sector,
         location: clientLocation.trim(),
-        bio: clientBio.trim()
+        bio: clientBio.trim(),
       };
 
       onAuthenticate(authenticatedUser, customSpecs);
       setLoading(false);
-    }, 1200);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Account creation failed.');
+      setLoading(false);
+    }
+  };
+
+  const fillDemo = (demoRole: UserRole) => {
+    if (demoRole === 'model') {
+      setName('Sofia Chen');
+      setEmail('sofia@model.com');
+      setRole('model');
+      setPassword('password123');
+    } else if (demoRole === 'client') {
+      setName('Agatha Bloom');
+      setEmail('director@vogue.com');
+      setRole('client');
+      setPassword('password123');
+    } else {
+      setName('Admin Control');
+      setEmail('admin@bookme.platform');
+      setRole('admin');
+      setPassword('admin123');
+    }
+  };
+
+  const handleFallbackAuth = () => {
+    const avatar = role === 'model'
+      ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150'
+      : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150';
+
+    const authenticatedUser: User = {
+      id: 'u_' + Math.random().toString(36).substring(2, 9),
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      role,
+      avatar,
+      created_at: new Date().toISOString(),
+    };
+
+    onAuthenticate(authenticatedUser);
   };
 
   return (
     <div id="auth-portal" className="w-full min-h-screen py-10 md:py-16 flex items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative overflow-hidden text-left">
       
-      {/* Decorative Editorial Elements */}
       <div className="absolute top-1/4 left-10 md:left-20 opacity-[0.03] dark:opacity-[0.05] pointer-events-none select-none">
         <h2 className="text-[170px] font-bold leading-none font-sans select-none">PORTAL</h2>
       </div>
@@ -207,7 +252,6 @@ export default function AuthView({
         
         <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-150 dark:border-slate-850 p-6 sm:p-9 shadow-xl space-y-6 relative">
           
-          {/* Back button to Home */}
           <button 
             onClick={() => setCurrentScreen('home')}
             className="absolute top-6 left-6 p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer group"
@@ -216,7 +260,6 @@ export default function AuthView({
             <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
           </button>
           
-          {/* Header Switch */}
           <div className="text-center space-y-2">
             <div className="text-2xl font-black font-sans tracking-tighter text-slate-900 dark:text-white mb-2">
               BOOKME
@@ -227,7 +270,6 @@ export default function AuthView({
                 <h1 className="text-2xl font-black text-slate-900 dark:text-white font-sans mt-2 tracking-tight">Log In to BookMe</h1>
                 <p className="text-xs text-slate-500 font-sans">Access campaign monitors and filter elite talent</p>
                 
-                {/* Role Toggle for Login */}
                 <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mt-4">
                   <button 
                     onClick={() => setRole('model')}
@@ -271,7 +313,13 @@ export default function AuthView({
             )}
           </div>
 
-          {/* Verification Feedback */}
+          {!FIREBASE_ENABLED && (
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 text-amber-600 dark:text-amber-400 text-xs rounded-xl font-medium flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              Firebase not configured. Using local fallback auth.
+            </div>
+          )}
+
           {errorMsg && (
             <div className="p-3 bg-rose-50 dark:bg-rose-955 border border-rose-100 dark:border-rose-900/30 text-rose-500 text-xs rounded-xl flex items-center gap-1.5 font-medium">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -285,12 +333,10 @@ export default function AuthView({
             </div>
           )}
 
-          {/* STAGE 1: CREDENTIALS SETUP (Or Login / Recovery) */}
           {subStage === 'credentials' && (
             <div className="space-y-5">
               
-              {/* Google Auth Federated Single Sign-On */}
-              {mode !== 'forgot' && (
+              {mode !== 'forgot' && FIREBASE_ENABLED && (
                 <div className="space-y-3">
                   <button
                     type="button"
@@ -305,11 +351,7 @@ export default function AuthView({
                         d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114A5.94 5.94 0 018 12.57a5.94 5.94 0 015.99-5.94c1.614 0 3.086.61 4.217 1.626l3.125-3.125A10.231 10.231 0 0013.99 2 10.27 10.27 0 003.7 12.285 10.27 10.27 0 0013.99 22.57c5.684 0 10.285-4.5 10.285-10.285 0-.693-.075-1.378-.2-2H12.24z"
                       />
                     </svg>
-                    {isGoogleAuth ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-sans font-semibold">
-                        <Check className="w-4 h-4" /> Google SSO Connected
-                      </span>
-                    ) : mode === 'login' ? 'Sign In with Google' : 'Sign Up with Google'}
+                    {mode === 'login' ? 'Sign In with Google' : 'Sign Up with Google'}
                   </button>
 
                   <div className="relative flex py-2 items-center">
@@ -322,10 +364,8 @@ export default function AuthView({
                 </div>
               )}
 
-              {/* Form container */}
               <form onSubmit={handleStep1Submit} className="space-y-4">
                 
-                {/* 1. Full name input (Signup & Login) */}
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                     Full Name
@@ -344,7 +384,6 @@ export default function AuthView({
                   </div>
                 </div>
 
-                {/* 2. Email key */}
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                     Email Address
@@ -363,7 +402,6 @@ export default function AuthView({
                   </div>
                 </div>
 
-                {/* 3. Password credentials key (hidden on Forgot) */}
                 {mode !== 'forgot' && (
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
@@ -389,15 +427,12 @@ export default function AuthView({
                         placeholder="Secure password key"
                         className="w-full pl-10 pr-4 py-3 text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-indigo-500 focus:outline-none dark:text-white"
                         disabled={loading}
-                        required={!isGoogleAuth}
+                        required
                       />
                     </div>
                   </div>
                 )}
 
-
-
-                {/* Submit / Continue Button */}
                 <div className="space-y-4">
                   <button
                     type="submit"
@@ -421,41 +456,36 @@ export default function AuthView({
                     <div className="grid grid-cols-2 gap-3 pt-2">
                        <button
                          type="button"
-                         onClick={() => {
-                           setName('Sofia Chen');
-                           setEmail('sofia@model.com');
-                           setRole('model');
-                           setPassword('password123');
-                         }}
+                         onClick={() => fillDemo('model')}
                          className="py-2.5 border border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer text-slate-500 hover:text-indigo-600 transition-all"
                        >
                          Demo Model
                        </button>
                        <button
                          type="button"
-                         onClick={() => {
-                           setName('Agatha Bloom');
-                           setEmail('director@vogue.com');
-                           setRole('client');
-                           setPassword('password123');
-                         }}
+                         onClick={() => fillDemo('client')}
                          className="py-2.5 border border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer text-slate-500 hover:text-indigo-600 transition-all"
                        >
                          Demo Client
                        </button>
                        <button
                          type="button"
-                         onClick={() => {
-                           setName('Admin Control');
-                           setEmail('admin@bookme.platform');
-                           setRole('admin');
-                           setPassword('admin123');
-                         }}
+                         onClick={() => fillDemo('admin')}
                          className="col-span-2 py-2.5 border border-slate-200 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer text-slate-500 hover:text-indigo-600 transition-all flex items-center justify-center gap-2"
                        >
                          <ShieldCheck className="w-3 h-3" /> Platform Admin
                        </button>
                     </div>
+                  )}
+
+                  {!FIREBASE_ENABLED && mode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={handleFallbackAuth}
+                      className="w-full py-3 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold uppercase tracking-widest cursor-pointer hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      Continue without Firebase (Offline Mode)
+                    </button>
                   )}
                 </div>
 
@@ -463,7 +493,6 @@ export default function AuthView({
             </div>
           )}
 
-          {/* STAGE 2: DETAILED SPECS PROFILE FORM CONTAINER */}
           {mode === 'signup' && subStage === 'profile-form' && (
             <form onSubmit={handleStep2Submit} className="space-y-5 animate-[fadeIn_0.3s_ease-out]">
               
@@ -473,14 +502,12 @@ export default function AuthView({
                 </span>
               </div>
 
-              {/* Account Type Selector - Select between Model and Business */}
               <div className="space-y-2.5 pt-2 pb-1 border-b border-slate-100 dark:border-slate-800/60">
                 <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                   Select Account Type
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   
-                  {/* Select Model Card */}
                   <div
                     onClick={() => setRole('model')}
                     className={`p-4 rounded-2xl border-2 text-center cursor-pointer transition-all col-span-1 ${
@@ -494,7 +521,6 @@ export default function AuthView({
                     <span className="text-[9px] text-slate-400 block mt-1 leading-normal">Publish comp-cards & apply to bookings</span>
                   </div>
 
-                  {/* Select Business (Client) Card */}
                   <div
                     onClick={() => setRole('client')}
                     className={`p-4 rounded-2xl border-2 text-center cursor-pointer transition-all col-span-1 ${
@@ -511,12 +537,10 @@ export default function AuthView({
                 </div>
               </div>
 
-              {/* ROLE SPECIFIC: MODEL FILL FORM */}
               {role === 'model' ? (
                 <div className="space-y-4">
                   
                   <div className="grid grid-cols-2 gap-4">
-                    {/* Age Input */}
                     <div className="space-y-1.5">
                       <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                         Age (Years)
@@ -532,7 +556,6 @@ export default function AuthView({
                       />
                     </div>
 
-                    {/* Height Input */}
                     <div className="space-y-1.5">
                       <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                         Height (cm)
@@ -553,14 +576,13 @@ export default function AuthView({
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    {/* Gender select */}
                     <div className="space-y-1.5">
                       <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                         Gender Designation
                       </label>
                       <select
                         value={gender}
-                        onChange={(e) => setGender(e.target.value as any)}
+                        onChange={(e) => setGender(e.target.value)}
                         className="w-full px-3 py-2.5 text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-indigo-500 focus:outline-none dark:text-white font-sans"
                       >
                         <option value="Female">Female</option>
@@ -570,14 +592,13 @@ export default function AuthView({
                       </select>
                     </div>
 
-                    {/* Experience Select */}
                     <div className="space-y-1.5">
                       <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                         Experience Tier
                       </label>
                       <select
                         value={experienceLevel}
-                        onChange={(e) => setExperienceLevel(e.target.value as any)}
+                        onChange={(e) => setExperienceLevel(e.target.value)}
                         className="w-full px-3 py-2.5 text-sm bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-indigo-500 focus:outline-none dark:text-white font-sans"
                       >
                         <option value="New Face">New Face</option>
@@ -589,7 +610,6 @@ export default function AuthView({
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    {/* Location */}
                     <div className="space-y-1.5">
                       <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                         Active Hub / City
@@ -607,7 +627,6 @@ export default function AuthView({
                       </div>
                     </div>
 
-                    {/* Daily Rate Input */}
                     <div className="space-y-1.5">
                       <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                         Expected Daily Rate
@@ -628,7 +647,6 @@ export default function AuthView({
                     </div>
                   </div>
 
-                  {/* Bio */}
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                       Professional Bio Snippet
@@ -645,10 +663,8 @@ export default function AuthView({
 
                 </div>
               ) : (
-                /* ROLE SPECIFIC: CLIENT FILL FORM */
                 <div className="space-y-4">
                   
-                  {/* Brand name */}
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                       Corporate / Brand Curation Name
@@ -664,7 +680,6 @@ export default function AuthView({
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    {/* Website */}
                     <div className="space-y-1.5">
                       <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                         Brand URL / Website
@@ -682,7 +697,6 @@ export default function AuthView({
                       </div>
                     </div>
 
-                    {/* Sector select */}
                     <div className="space-y-1.5">
                       <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                         Industry / Focus Sector
@@ -701,7 +715,6 @@ export default function AuthView({
                     </div>
                   </div>
 
-                  {/* Corporate Location */}
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                       Headquarters Hub Location
@@ -719,7 +732,6 @@ export default function AuthView({
                     </div>
                   </div>
 
-                  {/* Brand bio */}
                   <div className="space-y-1.5">
                     <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">
                       Corporate Campaign Summary / Mission
@@ -737,10 +749,8 @@ export default function AuthView({
                 </div>
               )}
 
-              {/* Step 2 Form triggers */}
               <div className="flex items-center gap-3 pt-3">
                 
-                {/* Back button */}
                 <button
                   type="button"
                   onClick={() => setSubStage('credentials')}
@@ -750,7 +760,6 @@ export default function AuthView({
                   <ArrowLeft className="w-3.5 h-3.5" /> Back
                 </button>
 
-                {/* Final Submit action */}
                 <button
                   type="submit"
                   className="flex-1 py-3 bg-indigo-650 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-indigo-600/10 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
@@ -771,7 +780,6 @@ export default function AuthView({
             </form>
           )}
 
-          {/* Form switcher links */}
           {subStage === 'credentials' && (
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800 text-center text-xs dark:text-slate-400 font-sans">
               {mode === 'login' && (
