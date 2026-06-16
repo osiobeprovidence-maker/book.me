@@ -207,9 +207,15 @@ function AppContent() {
     } else if (authenticatedUser.role === 'model') {
       setCurrentScreen('model-dashboard');
     } else if (authenticatedUser.role === 'client') {
-      const stored = localDB.getBusinessProfiles();
-      const hasProfile = stored.some((p: any) => p.user_id === authenticatedUser.id);
-      setCurrentScreen(hasProfile ? 'client-dashboard' : 'business-profile-setup');
+      try {
+        const stored = localDB.getBusinessProfiles();
+        const hasProfile = Array.isArray(stored) && stored.some((p: any) => p.user_id === authenticatedUser.id);
+        setCurrentScreen(hasProfile ? 'client-dashboard' : 'business-profile-setup');
+      } catch (e) {
+        setCurrentScreen('client-dashboard');
+      }
+    } else {
+      setCurrentScreen('model-dashboard');
     }
   };
 
