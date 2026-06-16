@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { AppScreen, User, ModelProfile, PortfolioImage, Booking, Opportunity, Application, BusinessProfile } from './types';
 import { localDB } from './lib/db';
 import { onAuthChange, mapFirebaseUser, logout as firebaseLogout } from './lib/firebase';
+import { createUserInConvex, createModelInConvex, upsertBusinessProfileInConvex } from './lib/convexMutations';
 import { ToastProvider, useToast } from './components/Toast';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -131,6 +132,15 @@ function AppContent() {
       return [...prev, authenticatedUser];
     });
 
+    // Save user to Convex
+    createUserInConvex({
+      name: authenticatedUser.name,
+      email: authenticatedUser.email,
+      role: authenticatedUser.role,
+      avatar: authenticatedUser.avatar,
+      firebaseUid: authenticatedUser.firebaseUid || authenticatedUser.id,
+    });
+
     if (authenticatedUser.role === 'model') {
       const exists = models.some((m) => m.user_id === authenticatedUser.id);
       if (!exists) {
@@ -149,6 +159,8 @@ function AppContent() {
           created_at: new Date().toISOString()
         };
         setModels((prev) => [...prev, generatedProfile]);
+        // Save model profile to Convex
+        createModelInConvex(generatedProfile);
         info('New candidate model profile bootstrapped!');
       } else if (profileSpecs) {
         setModels((prev) =>
@@ -156,6 +168,15 @@ function AppContent() {
         );
       }
     } else if (authenticatedUser.role === 'client' && profileSpecs) {
+      upsertBusinessProfileInConvex({
+        user_id: authenticatedUser.id,
+        brand_name: profileSpecs.brandName || authenticatedUser.name + ' Agency',
+        description: profileSpecs.bio || '',
+        industry: profileSpecs.sector || '',
+        website: profileSpecs.website || '',
+        address: profileSpecs.location || '',
+        is_verified: false,
+      });
       info(`Brand Custom Profile initialized: ${profileSpecs.brandName || authenticatedUser.name}`);
     }
 
@@ -316,6 +337,15 @@ function AppContent() {
       const exists = prev.find(p => p.user_id === profile.user_id);
       if (exists) return prev.map(p => p.user_id === profile.user_id ? profile : p);
       return [...prev, profile];
+    });
+    upsertBusinessProfileInConvex({
+      user_id: profile.user_id,
+      brand_name: profile.brand_name,
+      description: profile.description,
+      industry: profile.industry,
+      website: profile.website,
+      address: profile.address,
+      is_verified: profile.is_verified,
     });
     success('Business verification details saved.');
   };
