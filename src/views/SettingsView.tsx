@@ -24,7 +24,7 @@ interface SettingsViewProps {
   onActivateBusiness?: () => void;
 }
 
-export default function SettingsView({ currentUser, onUpdateUser, onBack, darkMode, onToggleDarkMode }: SettingsViewProps) {
+export default function SettingsView({ currentUser, onUpdateUser, onBack, darkMode, onToggleDarkMode, onActivateModel, onActivateBusiness }: SettingsViewProps) {
   const [activeTab, setActiveTab] = useState<'profile' | 'appearance' | 'billing' | 'notifications' | 'security'>('profile');
   const [isUpdating, setIsUpdating] = useState(false);
   const [displayName, setDisplayName] = useState(currentUser?.name || '');

@@ -5,7 +5,7 @@ const isConvexReady = () => !!convexClient && !!import.meta.env.VITE_CONVEX_URL;
 export async function createUserInConvex(data: {
   name: string;
   email: string;
-  role: 'client' | 'model' | 'admin';
+  role: string;
   avatar: string;
   firebaseUid: string;
 }) {
