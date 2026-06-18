@@ -25,6 +25,7 @@ interface OpportunityDetailViewProps {
   onApply: (opportunity: Opportunity) => void;
   onBack: () => void;
   onViewBrand: (businessId: string) => void;
+  isModel?: boolean;
 }
 
 export default function OpportunityDetailView({
@@ -33,8 +34,9 @@ export default function OpportunityDetailView({
   onApply,
   onBack,
   onViewBrand,
+  isModel,
 }: OpportunityDetailViewProps) {
-  const isModel = currentUser?.role === 'model';
+  const hasModelRole = isModel ?? false;
   const isFilled = opportunity.status === 'Filled' || opportunity.status === 'Expired';
 
   const getStatusColor = (status: string) => {
@@ -219,7 +221,7 @@ export default function OpportunityDetailView({
             </div>
 
             {/* Apply Button */}
-            {isModel && (
+            {hasModelRole && (
               <button
                 onClick={() => onApply(opportunity)}
                 disabled={isFilled}

@@ -8,7 +8,7 @@ import { User, SubscriptionPlan } from '../types';
 import { 
   User as UserIcon, Lock, Bell, CreditCard, Shield, 
   ChevronRight, ArrowLeft, Check, Sparkles, Globe,
-  Zap, Crown, Building, Moon, Sun
+  Zap, Crown, Building, Moon, Sun, Star, Briefcase
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { initializePayment, generateReference } from '../lib/paystack';
@@ -20,6 +20,8 @@ interface SettingsViewProps {
   onBack: () => void;
   darkMode: boolean;
   onToggleDarkMode: () => void;
+  onActivateModel?: () => void;
+  onActivateBusiness?: () => void;
 }
 
 export default function SettingsView({ currentUser, onUpdateUser, onBack, darkMode, onToggleDarkMode }: SettingsViewProps) {
@@ -172,6 +174,47 @@ export default function SettingsView({ currentUser, onUpdateUser, onBack, darkMo
                   </button>
                 </div>
               )}
+
+              {/* Role Activation Section */}
+              <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white mb-1">Activate Roles</h3>
+                <p className="text-xs text-slate-500 font-medium tracking-tight mb-6">Unlock additional capabilities on your account.</p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {!currentUser.roles.includes('model') && (
+                    <button
+                      onClick={onActivateModel}
+                      className="p-5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left cursor-pointer group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center mb-3 border border-indigo-100 dark:border-indigo-900/30 group-hover:scale-110 transition-transform">
+                        <Star className="w-5 h-5 text-indigo-500" />
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Become a Model</h4>
+                      <p className="text-[10px] text-slate-500 font-medium">Set up your model profile and get discovered by brands.</p>
+                    </button>
+                  )}
+
+                  {!currentUser.roles.includes('business') && (
+                    <button
+                      onClick={onActivateBusiness}
+                      className="p-5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all text-left cursor-pointer group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center mb-3 border border-amber-100 dark:border-amber-900/30 group-hover:scale-110 transition-transform">
+                        <Briefcase className="w-5 h-5 text-amber-500" />
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Become a Business</h4>
+                      <p className="text-[10px] text-slate-500 font-medium">Post opportunities and hire talent for your projects.</p>
+                    </button>
+                  )}
+
+                  {currentUser.roles.includes('model') && currentUser.roles.includes('business') && (
+                    <div className="col-span-full p-5 bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 text-center">
+                      <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">All roles activated</p>
+                      <p className="text-[10px] text-emerald-500 font-medium mt-1">Use the role switcher in the header to change between User, Model, and Business modes.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {activeTab === 'appearance' && (
                 <div className="space-y-8">

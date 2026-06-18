@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { AppScreen, User, ModelProfile, PortfolioImage, Booking, Opportunity, Application, BusinessProfile } from './types';
+import { AppScreen, User, ModelProfile, PortfolioImage, Booking, Opportunity, Application, BusinessProfile, UserRole } from './types';
 import { localDB } from './lib/db';
 import { onAuthChange, mapFirebaseUser, logout as firebaseLogout } from './lib/firebase';
 import { createUserInConvex, createModelInConvex, upsertBusinessProfileInConvex } from './lib/convexMutations';
@@ -54,13 +54,23 @@ function AppContent() {
     const unsub = onAuthChange(async (firebaseUser) => {
       if (firebaseUser) {
         const base = mapFirebaseUser(firebaseUser);
-        const existingUser = localDB.getActiveUser();
+        let existingUser = localDB.getActiveUser();
+        // Migrate old-format user
+        if (existingUser && !existingUser.roles && existingUser.role) {
+          const oldRole = existingUser.role;
+          delete existingUser.role;
+          if (oldRole === 'model') { existingUser.roles = ['model']; existingUser.activeRole = 'model'; }
+          else if (oldRole === 'admin') { existingUser.roles = ['admin']; existingUser.activeRole = 'admin'; }
+          else { existingUser.roles = ['user']; existingUser.activeRole = 'user'; }
+          localDB.setActiveUser(existingUser);
+        }
         if (existingUser?.id === base.id) {
           setCurrentUser(existingUser);
         } else {
           const newUser: User = {
             ...base,
-            role: 'model',
+            roles: ['user'],
+            activeRole: 'user',
             created_at: new Date().toISOString(),
           };
           setCurrentUser(newUser);
@@ -80,9 +90,34 @@ function AppContent() {
     const seedO = localDB.getOpportunities();
     const seedA = localDB.getApplications();
     const seedBP = localDB.getBusinessProfiles();
-    const activeU = localDB.getActiveUser();
+    let activeU = localDB.getActiveUser();
 
-    setUsers(seedU);
+    // Migrate old-format users (singular `role`) to new format (`roles` + `activeRole`)
+    const migrateUser = (u: any) => {
+      if (u && !u.roles && u.role) {
+        const oldRole = u.role;
+        delete u.role;
+        if (oldRole === 'model') {
+          u.roles = ['model'];
+          u.activeRole = 'model';
+        } else if (oldRole === 'admin') {
+          u.roles = ['admin'];
+          u.activeRole = 'admin';
+        } else {
+          u.roles = ['user'];
+          u.activeRole = 'user';
+        }
+      } else if (u && !u.roles) {
+        u.roles = ['user'];
+        u.activeRole = 'user';
+      }
+      return u;
+    };
+
+    const migratedUsers = seedU.map(migrateUser);
+    if (activeU) activeU = migrateUser(activeU);
+
+    setUsers(migratedUsers);
     setModels(seedM);
     setPortfolio(seedP);
     setBookings(seedB);
@@ -92,6 +127,10 @@ function AppContent() {
     if (activeU && !currentUser) {
       setCurrentUser(activeU);
     }
+
+    // Persist migrated users if any were changed
+    const needsSave = seedU.some((u: any) => !u.roles);
+    if (needsSave) localDB.saveUsers(migratedUsers);
   }, []);
 
   // Sync to localStorage whenever state changes
@@ -125,6 +164,22 @@ function AppContent() {
     success('Logged out successfully.');
   };
 
+  const getDashboardScreen = (role: UserRole) => {
+    if (role === 'model') return 'model-dashboard';
+    if (role === 'business') return 'client-dashboard';
+    return 'home';
+  };
+
+  const handleSwitchRole = (role: UserRole) => {
+    if (!currentUser) return;
+    const updated = { ...currentUser, activeRole: role };
+    setCurrentUser(updated);
+    localDB.setActiveUser(updated);
+    setUsers(prev => prev.map(u => u.id === currentUser.id ? updated : u));
+    setCurrentScreen(getDashboardScreen(role));
+    success(`Switched to ${role} mode`);
+  };
+
   const handleAuthenticate = (authenticatedUser: User, profileSpecs?: any) => {
     setCurrentUser(authenticatedUser);
     localDB.setActiveUser(authenticatedUser);
@@ -135,101 +190,86 @@ function AppContent() {
       return [...prev, authenticatedUser];
     });
 
-    // Save user to Convex
     createUserInConvex({
       name: authenticatedUser.name,
       email: authenticatedUser.email,
-      role: authenticatedUser.role,
+      role: authenticatedUser.activeRole,
       avatar: authenticatedUser.avatar,
       firebaseUid: authenticatedUser.firebaseUid || authenticatedUser.id,
     });
 
-    if (authenticatedUser.role === 'model') {
-      const exists = models.some((m) => m.user_id === authenticatedUser.id);
-      if (!exists) {
-        const generatedProfile: ModelProfile = {
-          id: authenticatedUser.id,
-          user_id: authenticatedUser.id,
-          name: authenticatedUser.name,
-          avatar: authenticatedUser.avatar,
-          bio: profileSpecs?.bio || 'Versatile modeling talent newly registered on BookMe Lite.',
-          gender: profileSpecs?.gender || 'Female',
-          age: profileSpecs?.age || 23,
-          height: profileSpecs?.height || 175,
-          location: profileSpecs?.location || 'New York, NY',
-          daily_rate: profileSpecs?.daily_rate || 1200,
-          experience_level: profileSpecs?.experience_level || 'New Face',
-          created_at: new Date().toISOString()
-        };
-        setModels((prev) => [...prev, generatedProfile]);
-        // Save model profile to Convex
-        createModelInConvex(generatedProfile);
-        info('New candidate model profile bootstrapped!');
-      } else if (profileSpecs) {
-        setModels((prev) =>
-          prev.map((m) => (m.user_id === authenticatedUser.id ? { ...m, ...profileSpecs } : m))
-        );
-      }
-    } else if (authenticatedUser.role === 'client' && profileSpecs) {
-      const newProfile: BusinessProfile = {
-        user_id: authenticatedUser.id,
-        brand_name: profileSpecs.brandName || authenticatedUser.name + ' Agency',
-        description: profileSpecs.bio || '',
-        industry: profileSpecs.sector || '',
-        website: profileSpecs.website || '',
-        address: profileSpecs.location || '',
-        is_verified: false,
-      };
-      setBusinessProfiles(prev => {
-        const exists = prev.find(p => p.user_id === authenticatedUser.id);
-        const updated = exists
-          ? prev.map(p => p.user_id === authenticatedUser.id ? newProfile : p)
-          : [...prev, newProfile];
-        localDB.saveBusinessProfiles(updated);
-        return updated;
-      });
-      upsertBusinessProfileInConvex({
-        user_id: authenticatedUser.id,
-        brand_name: profileSpecs.brandName || authenticatedUser.name + ' Agency',
-        description: profileSpecs.bio || '',
-        industry: profileSpecs.sector || '',
-        website: profileSpecs.website || '',
-        address: profileSpecs.location || '',
-        is_verified: false,
-      });
-      info(`Brand Custom Profile initialized: ${profileSpecs.brandName || authenticatedUser.name}`);
-    }
+    success(`Welcome, ${authenticatedUser.name}!`);
+    setCurrentScreen('home');
+  };
 
-    success(`Logged in as ${authenticatedUser.name}`);
+  const handleActivateModelRole = (modelData: {
+    name: string; bio: string; gender: string; age: number; height: number;
+    location: string; daily_rate: number; experience_level: string;
+  }) => {
+    if (!currentUser) return;
+    const newProfile: ModelProfile = {
+      id: currentUser.id,
+      user_id: currentUser.id,
+      name: modelData.name,
+      avatar: currentUser.avatar,
+      bio: modelData.bio,
+      gender: modelData.gender,
+      age: modelData.age,
+      height: modelData.height,
+      location: modelData.location,
+      daily_rate: modelData.daily_rate,
+      experience_level: modelData.experience_level,
+      created_at: new Date().toISOString(),
+    };
+    setModels(prev => [...prev, newProfile]);
+    createModelInConvex(newProfile);
 
-    if (authenticatedUser.role === 'admin') {
-      setCurrentScreen('admin');
-    } else if (authenticatedUser.role === 'model') {
-      setCurrentScreen('model-dashboard');
-    } else if (authenticatedUser.role === 'client') {
-      try {
-        const stored = localDB.getBusinessProfiles();
-        const hasProfile = Array.isArray(stored) && stored.some((p: any) => p.user_id === authenticatedUser.id);
-        setCurrentScreen(hasProfile ? 'client-dashboard' : 'business-profile-setup');
-      } catch (e) {
-        setCurrentScreen('client-dashboard');
-      }
-    } else {
-      setCurrentScreen('model-dashboard');
-    }
+    const roles = currentUser.roles.includes('model') ? currentUser.roles : [...currentUser.roles, 'model'];
+    const updated = { ...currentUser, roles, activeRole: 'model' as UserRole };
+    setCurrentUser(updated);
+    localDB.setActiveUser(updated);
+    setUsers(prev => prev.map(u => u.id === currentUser.id ? updated : u));
+    setCurrentScreen('model-dashboard');
+    success('Model profile activated! Welcome to the talent network.');
+  };
+
+  const handleActivateBusinessRole = (businessData: {
+    brand_name: string; description: string; industry: string; address: string; website: string;
+  }) => {
+    if (!currentUser) return;
+    const newProfile: BusinessProfile = {
+      user_id: currentUser.id,
+      brand_name: businessData.brand_name || currentUser.name + ' Agency',
+      description: businessData.description,
+      industry: businessData.industry,
+      website: businessData.website,
+      address: businessData.address,
+      is_verified: false,
+    };
+    setBusinessProfiles(prev => {
+      const exists = prev.find(p => p.user_id === currentUser.id);
+      const updated = exists ? prev.map(p => p.user_id === currentUser.id ? newProfile : p) : [...prev, newProfile];
+      localDB.saveBusinessProfiles(updated);
+      return updated;
+    });
+    upsertBusinessProfileInConvex({ ...newProfile });
+
+    const roles = currentUser.roles.includes('business') ? currentUser.roles : [...currentUser.roles, 'business'];
+    const updated = { ...currentUser, roles, activeRole: 'business' as UserRole };
+    setCurrentUser(updated);
+    localDB.setActiveUser(updated);
+    setUsers(prev => prev.map(u => u.id === currentUser.id ? updated : u));
+    setCurrentScreen('client-dashboard');
+    success('Business profile activated! Start hiring talent.');
   };
 
   const handleCreateBooking = (
-    eventName: string,
-    eventLocation: string,
-    bookingDate: string,
-    additionalNotes: string
+    eventName: string, eventLocation: string, bookingDate: string, additionalNotes: string
   ) => {
     if (!currentUser || !bookingTargetModel) {
-      error('You must be logged in to construct schedule reservations.');
+      error('You must be logged in to create bookings.');
       return;
     }
-
     const uniqueId = 'bk_' + Math.random().toString(36).substring(2, 9);
     const newBooking: Booking = {
       id: uniqueId,
@@ -244,7 +284,6 @@ function AppContent() {
       status: 'Pending',
       created_at: new Date().toISOString()
     };
-
     setBookings((prev) => [newBooking, ...prev]);
     success(`Booking request raised for ${bookingTargetModel.name}!`);
     setCurrentScreen('client-dashboard');
@@ -299,7 +338,6 @@ function AppContent() {
       status: 'Open',
       created_at: new Date().toISOString()
     };
-
     setOpportunities(prev => [newOpp, ...prev]);
     success('New casting opportunity posted to the wall!');
   };
@@ -319,7 +357,6 @@ function AppContent() {
       status: 'Pending',
       created_at: new Date().toISOString()
     };
-
     setApplications(prev => [newApp, ...prev]);
     setOpportunities(prev => prev.map(opp => {
       if (opp.id === appData.opportunity_id) {
@@ -338,11 +375,7 @@ function AppContent() {
           setOpportunities(opps => opps.map(opp => {
             if (opp.id === app.opportunity_id) {
               const newAcceptedCount = opp.models_accepted_count + 1;
-              return {
-                ...opp,
-                models_accepted_count: newAcceptedCount,
-                status: newAcceptedCount >= opp.models_needed ? 'Filled' : opp.status
-              };
+              return { ...opp, models_accepted_count: newAcceptedCount, status: newAcceptedCount >= opp.models_needed ? 'Filled' : opp.status };
             }
             return opp;
           }));
@@ -415,7 +448,6 @@ function AppContent() {
       mux_asset_id: muxAssetId,
       created_at: new Date().toISOString()
     };
-
     setPortfolio((prev) => [...prev, newAsset]);
     success(type === 'video' ? 'Video added to portfolio!' : 'Asset added to portfolio!');
   };
@@ -429,6 +461,23 @@ function AppContent() {
     return models.slice(0, 3);
   }, [models]);
 
+  // Active role helpers
+  const activeRole = currentUser?.activeRole || 'user';
+  const canActAsModel = currentUser?.roles?.includes('model') ?? false;
+  const canActAsBusiness = currentUser?.roles?.includes('business') ?? false;
+  const canActAsAdmin = currentUser?.roles?.includes('admin') ?? false;
+
+  const handleGoToProfile = () => {
+    if (!currentUser) return;
+    if (activeRole === 'model') {
+      setSelectedModelId(currentUser.id);
+      setCurrentScreen('profile');
+    } else if (activeRole === 'business') {
+      setSelectedBusinessId(currentUser.id);
+      setCurrentScreen('business-profile');
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 relative select-none selection:bg-indigo-500/20">
 
@@ -440,6 +489,12 @@ function AppContent() {
           logout={handleLogout}
           setSelectedModelId={setSelectedModelId}
           setSelectedBusinessId={setSelectedBusinessId}
+          activeRole={activeRole}
+          canActAsModel={canActAsModel}
+          canActAsBusiness={canActAsBusiness}
+          canActAsAdmin={canActAsAdmin}
+          onSwitchRole={handleSwitchRole}
+          onGoToProfile={handleGoToProfile}
         />
       )}
 
@@ -498,11 +553,7 @@ function AppContent() {
                 model={models.find(m => m.id === selectedModelId)!}
                 portfolio={portfolio.filter(p => p.model_id === selectedModelId)}
                 onBack={() => {
-                  if (currentUser?.id === selectedModelId) {
-                    setCurrentScreen('model-dashboard');
-                  } else {
-                    setCurrentScreen('profile');
-                  }
+                  setCurrentScreen(getDashboardScreen(activeRole));
                 }}
               />
             )}
@@ -562,23 +613,65 @@ function AppContent() {
               />
             )}
 
+            {currentScreen === 'model-onboarding' && currentUser && (
+              <ModelOnboardingView
+                currentUser={currentUser}
+                onComplete={handleActivateModelRole}
+                onSkip={() => setCurrentScreen(getDashboardScreen(activeRole))}
+                setCurrentScreen={setCurrentScreen}
+              />
+            )}
+
+            {currentScreen === 'business-profile-setup' && currentUser && (
+              <BusinessProfileSetupView
+                currentUser={currentUser}
+                onSave={(profile) => {
+                  handleActivateBusinessRole({
+                    brand_name: profile.brand_name || '',
+                    description: profile.description || '',
+                    industry: profile.industry || '',
+                    address: profile.address || '',
+                    website: profile.website || '',
+                  });
+                }}
+                onSkip={() => {
+                  const roles = currentUser.roles.includes('business') ? currentUser.roles : [...currentUser.roles, 'business'];
+                  const updated = { ...currentUser, roles, activeRole: 'business' as UserRole };
+                  setCurrentUser(updated);
+                  localDB.setActiveUser(updated);
+                  setUsers(prev => prev.map(u => u.id === currentUser.id ? updated : u));
+                  setCurrentScreen('client-dashboard');
+                }}
+                setCurrentScreen={setCurrentScreen}
+              />
+            )}
+
             {currentScreen === 'settings' && currentUser && (
               <SettingsView
                 currentUser={currentUser}
                 onUpdateUser={handleUpdateUser}
-                onBack={() => {
-                  if (currentUser.role === 'client') setCurrentScreen('client-dashboard');
-                  else setCurrentScreen('model-dashboard');
-                }}
+                onBack={() => setCurrentScreen(getDashboardScreen(activeRole))}
                 darkMode={darkMode}
                 onToggleDarkMode={() => setDarkMode(!darkMode)}
+                onActivateModel={() => {
+                  if (canActAsModel) {
+                    handleSwitchRole('model');
+                  } else {
+                    setCurrentScreen('model-onboarding');
+                  }
+                }}
+                onActivateBusiness={() => {
+                  if (canActAsBusiness) {
+                    handleSwitchRole('business');
+                  } else {
+                    setCurrentScreen('business-profile-setup');
+                  }
+                }}
               />
             )}
 
             {currentScreen === 'admin' && (
-              <AdminView
-                onBack={() => setCurrentScreen('home')}
-              />
+              <AdminView onBack={() => setCurrentScreen('home')} />
             )}
 
             {currentScreen === 'opportunities' && (
@@ -592,6 +685,7 @@ function AppContent() {
                   setSelectedBusinessId(id);
                   setCurrentScreen('business-profile');
                 }}
+                isModel={canActAsModel}
               />
             )}
 
@@ -599,18 +693,6 @@ function AppContent() {
               <AuthView
                 initialMode={currentScreen}
                 onAuthenticate={handleAuthenticate}
-                setCurrentScreen={setCurrentScreen}
-              />
-            )}
-
-            {currentScreen === 'business-profile-setup' && currentUser && (
-              <BusinessProfileSetupView
-                currentUser={currentUser}
-                onSave={(profile) => {
-                  handleUpdateBusinessProfile(profile);
-                  setCurrentScreen('client-dashboard');
-                }}
-                onSkip={() => setCurrentScreen('client-dashboard')}
                 setCurrentScreen={setCurrentScreen}
               />
             )}
@@ -625,6 +707,7 @@ function AppContent() {
                   setSelectedBusinessId(businessId);
                   setCurrentScreen('business-profile');
                 }}
+                isModel={canActAsModel}
               />
             )}
           </motion.div>
@@ -642,6 +725,122 @@ function AppContent() {
         />
       )}
 
+    </div>
+  );
+}
+
+import React, { useState } from 'react';
+import { User, UserRole } from '../types';
+import { ArrowLeft, Sparkles, User as UserIcon, MapPin, DollarSign, Award, Ruler, RefreshCw, Check } from 'lucide-react';
+import { motion } from 'motion/react';
+
+function ModelOnboardingView({ currentUser, onComplete, onSkip, setCurrentScreen }: {
+  currentUser: User;
+  onComplete: (data: any) => void;
+  onSkip: () => void;
+  setCurrentScreen: (s: AppScreen) => void;
+}) {
+  const [displayName, setDisplayName] = useState(currentUser.name);
+  const [bio, setBio] = useState('');
+  const [location, setLocation] = useState('');
+  const [gender, setGender] = useState('Female');
+  const [age, setAge] = useState(23);
+  const [height, setHeight] = useState(175);
+  const [dailyRate, setDailyRate] = useState(500);
+  const [experienceLevel, setExperienceLevel] = useState('New Face');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setTimeout(() => {
+      onComplete({ name: displayName, bio: bio.trim(), gender, age: Number(age), height: Number(height), location: location.trim(), daily_rate: Number(dailyRate), experience_level: experienceLevel });
+    }, 600);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center py-10 px-4">
+      <div className="w-full max-w-2xl">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 p-8 sm:p-10 shadow-xl">
+          <div className="flex items-center justify-between mb-8">
+            <button onClick={() => setCurrentScreen('settings')} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer">
+              <ArrowLeft className="w-5 h-5 text-slate-500" />
+            </button>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/30 rounded-full border border-indigo-100 dark:border-indigo-900/30">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Model Onboarding</span>
+            </div>
+          </div>
+
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-100 dark:border-indigo-900/30">
+              <UserIcon className="w-8 h-8 text-indigo-500" />
+            </div>
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Become a Model</h1>
+            <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">Set up your model profile so brands and agencies can discover you.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Display Name</label>
+              <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} className="w-full px-4 py-3 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-indigo-500 focus:outline-none dark:text-white" required />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Bio</label>
+              <textarea value={bio} onChange={e => setBio(e.target.value)} rows={3} placeholder="Tell brands about your style, experience, and specializations..." className="w-full px-4 py-3 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-indigo-500 focus:outline-none dark:text-white resize-none" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-1"><MapPin className="w-3 h-3" /> Location</label>
+                <input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="New York, NY" className="w-full px-4 py-3 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-indigo-500 focus:outline-none dark:text-white" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-1"><DollarSign className="w-3 h-3" /> Daily Rate ($)</label>
+                <input type="number" value={dailyRate} onChange={e => setDailyRate(Number(e.target.value))} className="w-full px-4 py-3 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-indigo-500 focus:outline-none dark:text-white" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-1"><Ruler className="w-3 h-3" /> Height (cm)</label>
+                <input type="number" value={height} onChange={e => setHeight(Number(e.target.value))} className="w-full px-4 py-3 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-indigo-500 focus:outline-none dark:text-white" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Age</label>
+                <input type="number" value={age} onChange={e => setAge(Number(e.target.value))} className="w-full px-4 py-3 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-indigo-500 focus:outline-none dark:text-white" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-1"><Award className="w-3 h-3" /> Level</label>
+                <select value={experienceLevel} onChange={e => setExperienceLevel(e.target.value)} className="w-full px-4 py-3 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-indigo-500 focus:outline-none dark:text-white">
+                  <option>New Face</option>
+                  <option>Rising Star</option>
+                  <option>Professional</option>
+                  <option>Top Model</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Gender</label>
+              <select value={gender} onChange={e => setGender(e.target.value)} className="w-full px-4 py-3 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-indigo-500 focus:outline-none dark:text-white">
+                <option>Female</option>
+                <option>Male</option>
+                <option>Non-binary</option>
+                <option>Other</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3 pt-4">
+              <button type="button" onClick={onSkip} className="px-6 py-3 text-sm font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors cursor-pointer">Skip for now</button>
+              <button type="submit" disabled={loading} className="flex-1 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-600/15 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all">
+                {loading ? <><RefreshCw className="w-4 h-4 animate-spin" /> Activating...</> : <><Check className="w-4 h-4" /> Activate Model Profile</>}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </div>
     </div>
   );
 }

@@ -30,6 +30,7 @@ interface OpportunityWallViewProps {
   onPostOpportunity: (opportunity: Partial<Opportunity>) => void;
   onNavigate: (screen: any) => void;
   onViewBrand?: (businessId: string) => void;
+  isModel?: boolean;
 }
 
 export default function OpportunityWallView({
@@ -38,7 +39,8 @@ export default function OpportunityWallView({
   onApply,
   onPostOpportunity,
   onNavigate,
-  onViewBrand
+  onViewBrand,
+  isModel
 }: OpportunityWallViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedState, setSelectedState] = useState('All States');
@@ -71,7 +73,7 @@ export default function OpportunityWallView({
       onNavigate('login');
       return;
     }
-    if (currentUser.role !== 'model') {
+    if (!isModel) {
        alert('Only models can apply to opportunities.');
        return;
     }
@@ -261,7 +263,7 @@ export default function OpportunityWallView({
           onClose={() => setViewingDetails(null)}
           opportunity={viewingDetails}
           onApply={handleApplyClick}
-          isModel={currentUser?.role === 'model'}
+          isModel={!!isModel}
         />
       )}
 

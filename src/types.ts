@@ -1,11 +1,12 @@
-export type UserRole = 'client' | 'model' | 'admin';
+export type UserRole = 'user' | 'model' | 'business' | 'admin';
 export type SubscriptionPlan = 'Free' | 'Pro' | 'Enterprise';
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
+  roles: UserRole[];
+  activeRole: UserRole;
   avatar: string;
   created_at: string;
   plan?: SubscriptionPlan;
@@ -62,6 +63,7 @@ export type AppScreen =
   | 'profile'
   | 'client-dashboard'
   | 'model-dashboard'
+  | 'user-dashboard'
   | 'login'
   | 'signup'
   | 'opportunities'
@@ -70,7 +72,9 @@ export type AppScreen =
   | 'public-profile'
   | 'settings'
   | 'admin'
-  | 'business-profile-setup';
+  | 'business-profile-setup'
+  | 'model-onboarding'
+  | 'business-onboarding';
 
 export type OpportunityStatus = 'Open' | 'Almost Full' | 'Filled' | 'Expired' | 'Still Looking For Applicants';
 

@@ -4,8 +4,8 @@
  */
 
 import React, { useState } from 'react';
-import { AppScreen, User } from '../types';
-import { Menu, X, LogOut, User as UserIcon, Calendar, Compass, Grid, Sparkles, Briefcase, Settings, ShieldCheck } from 'lucide-react';
+import { AppScreen, User, UserRole } from '../types';
+import { Menu, X, LogOut, User as UserIcon, Calendar, Compass, Grid, Sparkles, Briefcase, Settings, ShieldCheck, ChevronDown } from 'lucide-react';
 
 interface HeaderProps {
   currentScreen: AppScreen;
@@ -14,6 +14,12 @@ interface HeaderProps {
   logout: () => void;
   setSelectedModelId?: (id: string | null) => void;
   setSelectedBusinessId?: (id: string | null) => void;
+  activeRole: UserRole;
+  canActAsModel: boolean;
+  canActAsBusiness: boolean;
+  canActAsAdmin: boolean;
+  onSwitchRole: (role: UserRole) => void;
+  onGoToProfile: () => void;
 }
 
 export default function Header({
@@ -22,9 +28,16 @@ export default function Header({
   currentUser,
   logout,
   setSelectedModelId,
-  setSelectedBusinessId
+  setSelectedBusinessId,
+  activeRole,
+  canActAsModel,
+  canActAsBusiness,
+  canActAsAdmin,
+  onSwitchRole,
+  onGoToProfile
 }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
 
   const handleNavigate = (screen: AppScreen) => {
     if (setSelectedModelId) setSelectedModelId(null);
@@ -34,14 +47,7 @@ export default function Header({
   };
 
   const handleGoToMyProfile = () => {
-    if (!currentUser) return;
-    if (currentUser.role === 'model') {
-      if (setSelectedModelId) setSelectedModelId(currentUser.id);
-      setCurrentScreen('profile');
-    } else {
-      if (setSelectedBusinessId) setSelectedBusinessId(currentUser.id);
-      setCurrentScreen('business-profile');
-    }
+    onGoToProfile();
     setMobileMenuOpen(false);
   };
 
@@ -93,7 +99,7 @@ export default function Header({
 
             {currentUser && (
               <button
-                onClick={() => handleNavigate(currentUser.role === 'client' ? 'client-dashboard' : 'model-dashboard')}
+                onClick={() => handleNavigate(activeRole === 'model' ? 'model-dashboard' : 'client-dashboard')}
                 className={`px-4 py-2 rounded-lg cursor-pointer transition-all flex items-center gap-1.5 ${
                   currentScreen === 'client-dashboard' || currentScreen === 'model-dashboard'
                     ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-100/50 dark:border-indigo-900/40' 
@@ -123,10 +129,40 @@ export default function Header({
                       {currentUser.name}
                     </span>
                     <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                      {currentUser.role}
+                      {activeRole}
                     </span>
                   </div>
                 </div>
+
+                {/* Role Switcher */}
+                <div className="relative">
+                  <button
+                    onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
+                    className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 rounded-full transition-all cursor-pointer"
+                    title="Switch Role"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  {roleDropdownOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl py-2 z-50">
+                      <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">Switch Role</div>
+                      <button onClick={() => { onSwitchRole('user'); setRoleDropdownOpen(false); }} className={`w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer ${activeRole === 'user' ? 'text-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20' : 'text-slate-600 dark:text-slate-300'}`}>
+                        User
+                      </button>
+                      {canActAsModel && (
+                        <button onClick={() => { onSwitchRole('model'); setRoleDropdownOpen(false); }} className={`w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer ${activeRole === 'model' ? 'text-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20' : 'text-slate-600 dark:text-slate-300'}`}>
+                          Model
+                        </button>
+                      )}
+                      {canActAsBusiness && (
+                        <button onClick={() => { onSwitchRole('business'); setRoleDropdownOpen(false); }} className={`w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer ${activeRole === 'business' ? 'text-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20' : 'text-slate-600 dark:text-slate-300'}`}>
+                          Business
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <button
                   onClick={handleGoToMyProfile}
                   className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 rounded-full transition-all cursor-pointer"
@@ -143,7 +179,7 @@ export default function Header({
                 >
                   <Settings className="w-4 h-4" />
                 </button>
-                {currentUser.role === 'admin' && (
+                {canActAsAdmin && (
                   <button
                     onClick={() => handleNavigate('admin')}
                     className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 rounded-full transition-all cursor-pointer"
@@ -190,7 +226,7 @@ export default function Header({
                   src={currentUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'} 
                   alt={currentUser.name} 
                   className="w-8 h-8 rounded-full object-cover ring-1 ring-indigo-500"
-                  onClick={() => handleNavigate(currentUser.role === 'client' ? 'client-dashboard' : 'model-dashboard')}
+                  onClick={() => handleNavigate(activeRole === 'model' ? 'model-dashboard' : 'client-dashboard')}
                 />
               </div>
             )}
@@ -240,14 +276,14 @@ export default function Header({
                 View My Profile
               </button>
               <button
-                onClick={() => handleNavigate(currentUser.role === 'client' ? 'client-dashboard' : 'model-dashboard')}
+                onClick={() => handleNavigate(activeRole === 'model' ? 'model-dashboard' : 'client-dashboard')}
                 className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium ${
                   currentScreen === 'client-dashboard' || currentScreen === 'model-dashboard' 
                     ? 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400' 
                     : 'text-slate-600 dark:text-slate-300'
                 }`}
               >
-                Go to Dashboard ({currentUser.role === 'client' ? 'Client' : 'Model'})
+                Dashboard ({activeRole === 'model' ? 'Model' : activeRole === 'business' ? 'Business' : 'User'})
               </button>
               <button
                 onClick={() => handleNavigate('settings')}
@@ -257,7 +293,7 @@ export default function Header({
               >
                 Settings
               </button>
-              {currentUser.role === 'admin' && (
+              {canActAsAdmin && (
                 <button
                   onClick={() => handleNavigate('admin')}
                   className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium ${
@@ -267,6 +303,26 @@ export default function Header({
                   Admin Console
                 </button>
               )}
+              {/* Mobile Role Switcher */}
+              <div className="px-4 py-2 space-y-1">
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 pl-1">Switch Role</div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button onClick={() => { onSwitchRole('user'); setMobileMenuOpen(false); }} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${activeRole === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300'}`}>
+                    User
+                  </button>
+                  {canActAsModel && (
+                    <button onClick={() => { onSwitchRole('model'); setMobileMenuOpen(false); }} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${activeRole === 'model' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300'}`}>
+                      Model
+                    </button>
+                  )}
+                  {canActAsBusiness && (
+                    <button onClick={() => { onSwitchRole('business'); setMobileMenuOpen(false); }} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${activeRole === 'business' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300'}`}>
+                      Business
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <div className="h-px bg-slate-100 dark:bg-slate-900 my-1" />
               <div className="flex items-center justify-between px-4 py-2">
                 <div className="flex items-center gap-2">
@@ -278,7 +334,7 @@ export default function Header({
                   />
                   <div>
                     <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">{currentUser.name}</div>
-                    <div className="text-xs text-slate-400 italic block capitalize">{currentUser.role} Account</div>
+                    <div className="text-xs text-slate-400 italic block capitalize">{activeRole} Account</div>
                   </div>
                 </div>
                 <button
