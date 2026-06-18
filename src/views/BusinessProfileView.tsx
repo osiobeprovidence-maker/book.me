@@ -78,12 +78,12 @@ export default function BusinessProfileView({
                   <img 
                     src={user.avatar} 
                     className="w-full h-full object-cover rounded-[2rem]" 
-                    alt={user.name} 
+                    alt={user.full_name} 
                   />
                 </div>
                 <div className="pb-2">
                   <div className="flex items-center gap-3 mb-3">
-                    <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-none">{user.name}</h1>
+                    <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-none">{user.full_name}</h1>
                     {profile?.is_verified && (
                       <div className="p-1 bg-indigo-500 rounded-full shadow-lg shadow-indigo-500/30">
                         <ShieldCheck className="w-6 h-6 text-white" />
@@ -134,7 +134,7 @@ export default function BusinessProfileView({
                 About the Brand
               </h2>
               <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                {profile?.description || `${user.name} is a leading creative production house specializing in high-end editorial and commercial projects. We connect top brands with premium talent for global campaigns.`}
+                {profile?.description || `${user.full_name} is a leading creative production house specializing in high-end editorial and commercial projects. We connect top brands with premium talent for global campaigns.`}
               </p>
             </section>
 

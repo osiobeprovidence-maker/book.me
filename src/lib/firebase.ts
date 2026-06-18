@@ -11,6 +11,8 @@ import {
   getRedirectResult,
   sendPasswordResetEmail,
   updateProfile,
+  EmailAuthProvider,
+  linkWithCredential,
   User as FirebaseUser,
 } from 'firebase/auth';
 
@@ -91,13 +93,13 @@ export function onAuthChange(callback: (user: FirebaseUser | null) => void) {
 
 export function mapFirebaseUser(firebaseUser: FirebaseUser): {
   id: string;
-  name: string;
+  full_name: string;
   email: string;
   avatar: string;
 } {
   return {
     id: firebaseUser.uid,
-    name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+    full_name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
     email: firebaseUser.email || '',
     avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
   };
@@ -118,4 +120,12 @@ export function getFirebaseErrorMessage(err: any): string {
     'auth/invalid-credential': 'Invalid email or password.',
   };
   return messages[code] || err?.message || 'Authentication failed. Please try again.';
+}
+
+export async function linkPasswordToGoogleAccount(email: string, password: string) {
+  if (!auth) throw new Error('Firebase not configured');
+  const credential = EmailAuthProvider.credential(email, password);
+  const user = auth.currentUser;
+  if (!user) throw new Error('No authenticated user');
+  await linkWithCredential(user, credential);
 }

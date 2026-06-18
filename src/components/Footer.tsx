@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Camera, Heart, Sparkles } from 'lucide-react';
+import { Camera } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -101,8 +101,7 @@ export default function Footer() {
         <div className="border-t border-slate-200/80 dark:border-slate-900 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 dark:text-slate-500">
           <p>© {new Date().getFullYear()} BookMe Lite. All rights reserved.</p>
           <div className="flex items-center gap-1.5">
-            <span>Designed with passion for modeling portfolios</span>
-            <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+            
           </div>
         </div>
       </div>

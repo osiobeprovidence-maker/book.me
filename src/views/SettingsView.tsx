@@ -7,8 +7,8 @@ import React, { useState } from 'react';
 import { User, SubscriptionPlan } from '../types';
 import { 
   User as UserIcon, Lock, Bell, CreditCard, Shield, 
-  ChevronRight, ArrowLeft, Check, Sparkles, Globe,
-  Zap, Crown, Building, Moon, Sun, Star, Briefcase
+  ChevronRight, ArrowLeft, Check, Globe,
+  Zap, Building, Moon, Sun, Star, Briefcase
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { initializePayment, generateReference } from '../lib/paystack';
@@ -27,7 +27,7 @@ interface SettingsViewProps {
 export default function SettingsView({ currentUser, onUpdateUser, onBack, darkMode, onToggleDarkMode, onActivateModel, onActivateBusiness }: SettingsViewProps) {
   const [activeTab, setActiveTab] = useState<'profile' | 'appearance' | 'billing' | 'notifications' | 'security'>('profile');
   const [isUpdating, setIsUpdating] = useState(false);
-  const [displayName, setDisplayName] = useState(currentUser?.name || '');
+  const [displayName, setDisplayName] = useState(currentUser?.full_name || '');
   const [displayEmail, setDisplayEmail] = useState(currentUser?.email || '');
   const [avatarDataUrl, setAvatarDataUrl] = useState('');
 
@@ -43,7 +43,7 @@ export default function SettingsView({ currentUser, onUpdateUser, onBack, darkMo
       name: 'Pro', 
       price: '$19', 
       features: ['Verified Badge', 'Unlimited Photos', 'Unlimited Applications', 'Direct Messaging'],
-      icon: Crown,
+      icon: Star,
       color: 'indigo'
     },
     { 
@@ -73,7 +73,6 @@ export default function SettingsView({ currentUser, onUpdateUser, onBack, darkMo
             <h1 className="text-3xl font-black tracking-tight dark:text-white">Settings</h1>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-950/30 rounded-xl border border-indigo-100 dark:border-indigo-900/50">
-             <Sparkles className="w-4 h-4 text-indigo-500" />
              <span className="text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
                {currentUser.plan || 'Free'} Plan
              </span>
@@ -132,7 +131,7 @@ export default function SettingsView({ currentUser, onUpdateUser, onBack, darkMo
                         />
                       </div>
                       <div className="space-y-1">
-                        <h4 className="font-bold">{currentUser.name}</h4>
+                        <h4 className="font-bold">{currentUser.full_name}</h4>
                         <p className="text-xs text-slate-400 tracking-widest uppercase font-black">{currentUser.role} Account</p>
                       </div>
                     </div>
@@ -161,7 +160,7 @@ export default function SettingsView({ currentUser, onUpdateUser, onBack, darkMo
                     onClick={() => {
                       setIsUpdating(true);
                       const updates: Partial<User> = {};
-                      if (displayName !== currentUser.name) updates.name = displayName;
+                      if (displayName !== currentUser.full_name) updates.full_name = displayName;
                       if (displayEmail !== currentUser.email) updates.email = displayEmail;
                       if (avatarDataUrl) updates.avatar = avatarDataUrl;
                       if (Object.keys(updates).length > 0) onUpdateUser(updates);
@@ -353,66 +352,101 @@ export default function SettingsView({ currentUser, onUpdateUser, onBack, darkMo
                 </div>
               )}
 
-              {activeTab === 'security' && (
-                <div className="space-y-8">
-                  <div>
-                    <h2 className="text-xl font-black mb-1">Login & Security</h2>
-                    <p className="text-xs text-slate-500 font-medium tracking-tight">Keep your account safe and manage your access credentials.</p>
-                  </div>
+               {activeTab === 'security' && (
+                 <div className="space-y-8">
+                   <div>
+                     <h2 className="text-xl font-black mb-1">Login & Security</h2>
+                     <p className="text-xs text-slate-500 font-medium tracking-tight">Keep your account safe and manage your access credentials.</p>
+                   </div>
 
-                  <div className="space-y-6">
-                     <div className="p-6 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                           <Shield className="w-5 h-5 text-emerald-500" />
-                           <div>
-                              <p className="text-sm font-bold">Two-Factor Authentication</p>
-                              <p className="text-[10px] text-slate-500 font-medium">Secured by your primary mobile device</p>
+                   <div className="space-y-6">
+                      {currentUser.auth_provider === 'google' && (
+                        <div className="p-6 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-200 dark:border-amber-900/30 space-y-4">
+                          <div className="flex items-center gap-3">
+                            <Shield className="w-5 h-5 text-amber-500" />
+                            <div>
+                              <p className="text-sm font-bold">Set Password</p>
+                              <p className="text-[10px] text-slate-500 font-medium">Your account uses Google login. Set a password to also sign in with email.</p>
+                            </div>
+                          </div>
+                          <div className="space-y-3 pl-8">
+                            <input type="password" placeholder="New Password" className="w-full px-5 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:border-indigo-500" />
+                            <input type="password" placeholder="Confirm Password" className="w-full px-5 py-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:border-indigo-500" />
+                            <button className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-indigo-500 transition-all">
+                              Link Password to Account
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="p-6 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                         <div className="flex items-center gap-4">
+                            <Shield className="w-5 h-5 text-emerald-500" />
+                            <div>
+                               <p className="text-sm font-bold">Two-Factor Authentication</p>
+                               <p className="text-[10px] text-slate-500 font-medium">Secured by your primary mobile device</p>
+                            </div>
+                         </div>
+                         <div className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase rounded-full">Active</div>
+                      </div>
+
+                      <div className="space-y-4">
+                         <h4 className="text-xs font-black uppercase tracking-widest">Change Password</h4>
+                         <div className="space-y-4">
+                            {currentUser.auth_provider !== 'google' && (
+                              <input type="password" placeholder="Current Password" className="w-full px-5 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl text-sm outline-none focus:border-indigo-500" />
+                            )}
+                            <input type="password" placeholder="New Password" className="w-full px-5 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl text-sm outline-none focus:border-indigo-500" />
+                         </div>
+                         <button className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-indigo-500 transition-all">
+                            Update Security Credentials
+                         </button>
+                      </div>
+                   </div>
+                 </div>
+               )}
+
+               {activeTab === 'notifications' && (
+                 <div className="space-y-8">
+                   <div>
+                     <h2 className="text-xl font-black mb-1">Notification Preferences</h2>
+                     <p className="text-xs text-slate-500 font-medium tracking-tight">Manage your in-app and email notification settings.</p>
+                   </div>
+
+                   <div className="space-y-4">
+                      {[
+                        { label: 'Booking Requests', desc: 'Alert me when a client requests a booking', checked: true },
+                        { label: 'Application Updates', desc: 'Notify me when my job application status changes', checked: true },
+                        { label: 'Email Notifications', desc: 'Receive email copies of all important notifications', checked: true },
+                        { label: 'Platform Announcements', desc: 'Updates about BookMe features and improvements', checked: false },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-950 rounded-2xl transition-colors">
+                           <div className="space-y-0.5">
+                              <p className="text-sm font-bold">{item.label}</p>
+                              <p className="text-[10px] text-slate-500 font-medium">{item.desc}</p>
+                           </div>
+                           <div className={`w-12 h-6 rounded-full relative transition-colors cursor-pointer ${item.checked ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-800'}`}>
+                              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${item.checked ? 'left-7' : 'left-1'}`} />
                            </div>
                         </div>
-                        <div className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase rounded-full">Active</div>
-                     </div>
+                      ))}
+                   </div>
 
-                     <div className="space-y-4">
-                        <h4 className="text-xs font-black uppercase tracking-widest">Change Password</h4>
-                        <div className="space-y-4">
-                           <input type="password" placeholder="Current Password" className="w-full px-5 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl text-sm" />
-                           <input type="password" placeholder="New Password" className="w-full px-5 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl text-sm" />
-                        </div>
-                        <button className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest overflow-hidden relative group">
-                           Update Security Credentials
-                        </button>
-                     </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'notifications' && (
-                <div className="space-y-8">
-                  <div>
-                    <h2 className="text-xl font-black mb-1">Push Notifications</h2>
-                    <p className="text-xs text-slate-500 font-medium tracking-tight">How and when you want to be alerted about new opportunities.</p>
-                  </div>
-
-                  <div className="space-y-4">
-                     {[
-                       { label: 'Booking Requests', desc: 'Alert me when a client requests a booking', checked: true },
-                       { label: 'Application Updates', desc: 'Notify me when my job application status changes', checked: true },
-                       { label: 'New Job Alerts', desc: 'Notify me about new jobs in my category', checked: false },
-                       { label: 'Platform Announcements', desc: 'Updates about BookMe features', checked: true },
-                     ].map((item, i) => (
-                       <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-950 rounded-2xl transition-colors">
-                          <div className="space-y-0.5">
-                             <p className="text-sm font-bold">{item.label}</p>
-                             <p className="text-[10px] text-slate-500 font-medium">{item.desc}</p>
-                          </div>
-                          <div className={`w-12 h-6 rounded-full relative transition-colors cursor-pointer ${item.checked ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-800'}`}>
-                             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${item.checked ? 'left-7' : 'left-1'}`} />
-                          </div>
-                       </div>
-                     ))}
-                  </div>
-                </div>
-              )}
+                   <div className="p-5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-100 dark:border-slate-800">
+                     <h4 className="text-xs font-black uppercase tracking-widest mb-2">Email Notifications</h4>
+                     <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                       Important system events will always send email notifications to your registered email address:
+                       <span className="block mt-1 text-indigo-600 dark:text-indigo-400 font-bold">{currentUser.email}</span>
+                     </p>
+                     <ul className="mt-3 space-y-1.5 text-[10px] text-slate-500">
+                       <li className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> New booking requests and confirmations</li>
+                       <li className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Booking cancellations</li>
+                       <li className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Payment updates</li>
+                       <li className="flex items-center gap-2"><Check className="w-3 h-3 text-emerald-500" /> Account security alerts</li>
+                     </ul>
+                   </div>
+                 </div>
+               )}
             </motion.div>
           </div>
         </div>

@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { 
-  Users, BarChart3, ShieldCheck, AlertTriangle, 
+  Users, BarChart3, Shield, AlertTriangle, 
   Search, Filter, MoreHorizontal, ArrowUpRight,
   TrendingUp, DollarSign, UserCheck, Briefcase,
   ArrowLeft
@@ -48,7 +48,7 @@ export default function AdminView({ onBack }: AdminViewProps) {
                 <ArrowLeft className="w-5 h-5 dark:text-white" />
               </button>
               <div className="flex items-center gap-3">
-                 <ShieldCheck className="w-6 h-6 text-indigo-600" />
+                 <Shield className="w-6 h-6 text-indigo-600" />
                  <h1 className="text-xl font-black tracking-tight dark:text-white">Central Admin</h1>
               </div>
            </div>

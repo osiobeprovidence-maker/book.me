@@ -6,7 +6,7 @@
 import React from 'react';
 import { ModelProfile, AppScreen } from '../types';
 import ModelCard from '../components/ModelCard';
-import { Sparkles, ArrowRight, Camera, ShieldCheck, HeartPulse, UserCheck, Play, Clapperboard, Star } from 'lucide-react';
+import { ArrowRight, Camera, ShieldCheck, HeartPulse, UserCheck, Play, Clapperboard, Star } from 'lucide-react';
 
 interface LandingViewProps {
   featuredModels: ModelProfile[];

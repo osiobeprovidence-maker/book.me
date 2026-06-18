@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { AppScreen, User, UserRole } from '../types';
-import { Menu, X, LogOut, User as UserIcon, Calendar, Compass, Grid, Sparkles, Briefcase, Settings, ShieldCheck, ChevronDown } from 'lucide-react';
+import { Menu, X, LogOut, User as UserIcon, Calendar, Compass, Grid, Briefcase, Settings, ShieldCheck, ChevronDown } from 'lucide-react';
 
 interface HeaderProps {
   currentScreen: AppScreen;
@@ -121,12 +121,12 @@ export default function Header({
                   <img 
                     referrerPolicy="no-referrer"
                     src={currentUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'} 
-                    alt={currentUser.name} 
+                    alt={currentUser.full_name} 
                     className="w-7 h-7 rounded-full object-cover ring-1 ring-indigo-500/30"
                   />
                   <div className="text-left font-sans flex flex-col justify-center leading-none">
                     <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block truncate max-w-[100px]">
-                      {currentUser.name}
+                      {currentUser.full_name}
                     </span>
                     <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
                       {activeRole}
@@ -224,7 +224,7 @@ export default function Header({
                 <img 
                   referrerPolicy="no-referrer"
                   src={currentUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'} 
-                  alt={currentUser.name} 
+                  alt={currentUser.full_name} 
                   className="w-8 h-8 rounded-full object-cover ring-1 ring-indigo-500"
                   onClick={() => handleNavigate(activeRole === 'model' ? 'model-dashboard' : 'client-dashboard')}
                 />
@@ -329,11 +329,11 @@ export default function Header({
                   <img 
                     referrerPolicy="no-referrer"
                     src={currentUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'} 
-                    alt={currentUser.name} 
+                    alt={currentUser.full_name} 
                     className="w-8 h-8 rounded-full object-cover"
                   />
                   <div>
-                    <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">{currentUser.name}</div>
+                    <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">{currentUser.full_name}</div>
                     <div className="text-xs text-slate-400 italic block capitalize">{activeRole} Account</div>
                   </div>
                 </div>

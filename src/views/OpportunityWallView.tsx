@@ -15,7 +15,6 @@ import {
   MapPin, 
   Filter, 
   User as UserIcon, 
-  Sparkles, 
   Briefcase,
   Layers,
   ArrowRight,
@@ -101,7 +100,6 @@ export default function OpportunityWallView({
           >
             <div className="max-w-2xl text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-900 dark:bg-white rounded-full text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-[0.2em] mb-6 shadow-xl shadow-slate-900/10">
-                <Sparkles className="w-3 h-3 fill-indigo-400" />
                 Casting Network
               </div>
               <h1 className="text-5xl md:text-7xl font-black text-slate-900 dark:text-white font-sans tracking-tighter mb-6 leading-[0.9]">
@@ -252,7 +250,7 @@ export default function OpportunityWallView({
           isOpen={true}
           onClose={() => setApplyingTo(null)}
           opportunity={applyingTo}
-          modelName={currentUser?.name || ''}
+          modelName={currentUser?.full_name || ''}
           onApply={onApply}
         />
       )}

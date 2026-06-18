@@ -15,6 +15,7 @@ import DashboardClientView from './views/DashboardClientView';
 import DashboardModelView from './views/DashboardModelView';
 import OpportunityWallView from './views/OpportunityWallView';
 import AuthView from './views/AuthView';
+import AccountTypeSelectionView from './views/AccountTypeSelectionView';
 import SettingsView from './views/SettingsView';
 import AdminView from './views/AdminView';
 import BusinessProfileSetupView from './views/BusinessProfileSetupView';
@@ -69,6 +70,7 @@ function AppContent() {
         } else {
           const newUser: User = {
             ...base,
+            auth_provider: 'google',
             roles: ['user'],
             activeRole: 'user',
             created_at: new Date().toISOString(),
@@ -191,15 +193,29 @@ function AppContent() {
     });
 
     createUserInConvex({
-      name: authenticatedUser.name,
+      name: authenticatedUser.full_name,
       email: authenticatedUser.email,
       role: authenticatedUser.activeRole,
       avatar: authenticatedUser.avatar,
       firebaseUid: authenticatedUser.firebaseUid || authenticatedUser.id,
     });
 
-    success(`Welcome, ${authenticatedUser.name}!`);
+    success(`Welcome, ${authenticatedUser.full_name}!`);
+
+    const isNewSignup = profileSpecs?.isNewSignup || false;
+    setCurrentScreen(isNewSignup ? 'account-type-selection' : 'home');
+  };
+
+  const handleAccountTypeUserOnly = () => {
     setCurrentScreen('home');
+  };
+
+  const handleAccountTypeBecomeModel = () => {
+    setCurrentScreen('model-onboarding');
+  };
+
+  const handleAccountTypeBecomeBusiness = () => {
+    setCurrentScreen('business-profile-setup');
   };
 
   const handleActivateModelRole = (modelData: {
@@ -239,7 +255,7 @@ function AppContent() {
     if (!currentUser) return;
     const newProfile: BusinessProfile = {
       user_id: currentUser.id,
-      brand_name: businessData.brand_name || currentUser.name + ' Agency',
+      brand_name: businessData.brand_name || currentUser.full_name + ' Agency',
       description: businessData.description,
       industry: businessData.industry,
       website: businessData.website,
@@ -274,7 +290,7 @@ function AppContent() {
     const newBooking: Booking = {
       id: uniqueId,
       client_id: currentUser.id,
-      client_name: currentUser.name,
+      client_name: currentUser.full_name,
       client_email: currentUser.email,
       model_id: bookingTargetModel.id,
       booking_date: bookingDate,
@@ -314,7 +330,7 @@ function AppContent() {
       id: 'opp_' + Math.random().toString(36).substring(2, 9),
       business_id: currentUser.id,
       title: oppData.title || 'Untitled Opportunity',
-      business_name: oppData.business_name || currentUser.name,
+      business_name: oppData.business_name || currentUser.full_name,
       business_logo: oppData.business_logo,
       business_description: oppData.business_description || '',
       contact_info: oppData.contact_info || '',
@@ -348,7 +364,7 @@ function AppContent() {
       id: 'app_' + Math.random().toString(36).substring(2, 9),
       opportunity_id: appData.opportunity_id || '',
       model_id: currentUser.id,
-      full_name: appData.full_name || currentUser.name,
+      full_name: appData.full_name || currentUser.full_name,
       portfolio_photos: appData.portfolio_photos || [],
       bio: appData.bio || '',
       instagram_handle: appData.instagram_handle || '',
@@ -481,7 +497,7 @@ function AppContent() {
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 relative select-none selection:bg-indigo-500/20">
 
-      {currentScreen !== 'public-profile' && (
+      {currentScreen !== 'public-profile' && currentScreen !== 'account-type-selection' && (
         <Header
           currentScreen={currentScreen}
           setCurrentScreen={setCurrentScreen}
@@ -697,6 +713,16 @@ function AppContent() {
               />
             )}
 
+            {currentScreen === 'account-type-selection' && currentUser && (
+              <AccountTypeSelectionView
+                currentUser={currentUser}
+                onSelectUserOnly={handleAccountTypeUserOnly}
+                onBecomeModel={handleAccountTypeBecomeModel}
+                onBecomeBusiness={handleAccountTypeBecomeBusiness}
+                setCurrentScreen={setCurrentScreen}
+              />
+            )}
+
             {currentScreen === 'opportunity-detail' && selectedOpportunity && (
               <OpportunityDetailView
                 opportunity={selectedOpportunity}
@@ -731,7 +757,7 @@ function AppContent() {
 
 import React, { useState } from 'react';
 import { User, UserRole } from '../types';
-import { ArrowLeft, Sparkles, User as UserIcon, MapPin, DollarSign, Award, Ruler, RefreshCw, Check } from 'lucide-react';
+import { ArrowLeft, User as UserIcon, MapPin, DollarSign, BadgeCheck, Ruler, RefreshCw, Check } from 'lucide-react';
 import { motion } from 'motion/react';
 
 function ModelOnboardingView({ currentUser, onComplete, onSkip, setCurrentScreen }: {
@@ -740,7 +766,7 @@ function ModelOnboardingView({ currentUser, onComplete, onSkip, setCurrentScreen
   onSkip: () => void;
   setCurrentScreen: (s: AppScreen) => void;
 }) {
-  const [displayName, setDisplayName] = useState(currentUser.name);
+  const [displayName, setDisplayName] = useState(currentUser.full_name);
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
   const [gender, setGender] = useState('Female');
@@ -767,7 +793,6 @@ function ModelOnboardingView({ currentUser, onComplete, onSkip, setCurrentScreen
               <ArrowLeft className="w-5 h-5 text-slate-500" />
             </button>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/30 rounded-full border border-indigo-100 dark:border-indigo-900/30">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
               <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Model Onboarding</span>
             </div>
           </div>
@@ -812,7 +837,7 @@ function ModelOnboardingView({ currentUser, onComplete, onSkip, setCurrentScreen
                 <input type="number" value={age} onChange={e => setAge(Number(e.target.value))} className="w-full px-4 py-3 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-indigo-500 focus:outline-none dark:text-white" />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-1"><Award className="w-3 h-3" /> Level</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-1"><BadgeCheck className="w-3 h-3" /> Level</label>
                 <select value={experienceLevel} onChange={e => setExperienceLevel(e.target.value)} className="w-full px-4 py-3 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-indigo-500 focus:outline-none dark:text-white">
                   <option>New Face</option>
                   <option>Rising Star</option>

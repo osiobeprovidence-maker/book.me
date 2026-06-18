@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BusinessProfile, AppScreen, User } from '../types';
-import { ArrowLeft, Building, Globe, MapPin, Briefcase, Image, Link, Check, RefreshCw, Sparkles } from 'lucide-react';
+import { ArrowLeft, Building, Globe, MapPin, Briefcase, Image, Link, Check, RefreshCw } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface BusinessProfileSetupViewProps {
@@ -29,7 +29,7 @@ export default function BusinessProfileSetupView({
     setLoading(true);
     const profile: BusinessProfile = {
       user_id: currentUser.id,
-      brand_name: brandName.trim() || currentUser.name + ' Agency',
+      brand_name: brandName.trim() || currentUser.full_name + ' Agency',
       website: website.trim(),
       industry,
       address: location.trim(),
@@ -60,7 +60,6 @@ export default function BusinessProfileSetupView({
               <ArrowLeft className="w-5 h-5 text-slate-500" />
             </button>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/30 rounded-full border border-indigo-100 dark:border-indigo-900/30">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
               <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Brand Setup</span>
             </div>
           </div>
@@ -85,7 +84,7 @@ export default function BusinessProfileSetupView({
                     type="text"
                     value={brandName}
                     onChange={(e) => setBrandName(e.target.value)}
-                    placeholder={currentUser.name + ' Agency'}
+                    placeholder={currentUser.full_name + ' Agency'}
                     className="w-full pl-10 pr-4 py-3 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:border-indigo-500 focus:outline-none dark:text-white"
                   />
                 </div>

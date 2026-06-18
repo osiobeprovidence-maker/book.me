@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { ModelProfile } from '../types';
-import { X, Save, ShieldCheck, MapPin, DollarSign, Award, Ruler, Sparkles } from 'lucide-react';
+import { X, Save, ShieldCheck, MapPin, DollarSign, BadgeCheck, Ruler } from 'lucide-react';
 import ImageUploader from './ImageUploader';
 
 interface EditProfileModalProps {
@@ -87,7 +87,6 @@ export default function EditProfileModal({
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white font-sans flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-indigo-500" />
               Customize Portfolio Bio & Stats
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -230,7 +229,7 @@ export default function EditProfileModal({
             {/* Experience level tier */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                <Award className="w-3.5 h-3.5 text-slate-400" />
+                <BadgeCheck className="w-3.5 h-3.5 text-slate-400" />
                 Experience Tier Level
               </label>
               <select

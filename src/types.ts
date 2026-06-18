@@ -3,11 +3,13 @@ export type SubscriptionPlan = 'Free' | 'Pro' | 'Enterprise';
 
 export interface User {
   id: string;
-  name: string;
+  full_name: string;
   email: string;
+  phone?: string;
+  avatar: string;
+  auth_provider: 'email' | 'google';
   roles: UserRole[];
   activeRole: UserRole;
-  avatar: string;
   created_at: string;
   plan?: SubscriptionPlan;
   firebaseUid?: string;
@@ -74,7 +76,8 @@ export type AppScreen =
   | 'admin'
   | 'business-profile-setup'
   | 'model-onboarding'
-  | 'business-onboarding';
+  | 'business-onboarding'
+  | 'account-type-selection';
 
 export type OpportunityStatus = 'Open' | 'Almost Full' | 'Filled' | 'Expired' | 'Still Looking For Applicants';
 
@@ -134,4 +137,19 @@ export interface BusinessProfile {
   industry?: string;
   founded_year?: string;
   cover_image?: string;
+}
+
+export type NotificationType = 'booking_request' | 'booking_confirmed' | 'booking_cancelled' | 'message' | 'payment' | 'application_update' | 'system_alert' | 'security_alert';
+
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  action_label?: string;
+  action_screen?: AppScreen;
+  read: boolean;
+  created_at: string;
+  email_sent?: boolean;
 }

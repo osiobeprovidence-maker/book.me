@@ -6,7 +6,7 @@
 import React, { useState, useMemo } from 'react';
 import { ModelProfile } from '../types';
 import ModelCard from '../components/ModelCard';
-import { Search, MapPin, SlidersHorizontal, Sliders, X, Sparkles, Filter, ChevronDown, DollarSign } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal, Sliders, X, Filter, ChevronDown, DollarSign } from 'lucide-react';
 
 interface DirectoryViewProps {
   models: ModelProfile[];
@@ -49,7 +49,7 @@ export default function DirectoryView({ models, onViewProfile }: DirectoryViewPr
         {/* Intro Header */}
         <div className="text-left space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-150/20 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-            <Sparkles className="w-3.5 h-3.5" /> High-Art Talent Catalog
+            High-Art Talent Catalog
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white font-sans tracking-tight">
             Explore Professional Models

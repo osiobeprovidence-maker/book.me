@@ -140,7 +140,7 @@ export default function DashboardClientView({
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-10 border-b border-slate-100 dark:border-slate-800 pb-12">
           <div className="flex items-center gap-8">
             <div className="w-24 h-24 rounded-[2rem] bg-slate-900 dark:bg-white flex items-center justify-center text-white dark:text-slate-950 text-4xl font-black shadow-2xl">
-              {currentUser.name.charAt(0)}
+              {currentUser.full_name.charAt(0)}
             </div>
             <div>
               <div className="flex items-center gap-4 mb-2">
@@ -149,7 +149,7 @@ export default function DashboardClientView({
                   <MapPin className="w-3 h-3" /> {clientLocation}
                 </span>
               </div>
-              <h1 className="text-5xl font-black dark:text-white tracking-tighter leading-none">{currentUser.name}</h1>
+              <h1 className="text-5xl font-black dark:text-white tracking-tighter leading-none">{currentUser.full_name}</h1>
               <div className="flex gap-4 mt-4">
                 <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">Production Management Console</p>
                 <button 
@@ -420,7 +420,7 @@ export default function DashboardClientView({
         isOpen={oppFormOpen}
         onClose={() => setOppFormOpen(false)}
         onSubmit={onPostOpportunity}
-        businessName={currentUser.name}
+        businessName={currentUser.full_name}
         isVerified={true} // Defaulting for the dashboard
       />
 

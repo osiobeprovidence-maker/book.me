@@ -8,7 +8,7 @@ import { User, Booking, ModelProfile, PortfolioImage, AppScreen, Application, Op
 import EditProfileModal from '../components/EditProfileModal';
 import { 
   Compass, Award, MapPin, Ruler, Inbox, CheckCircle2, XCircle, 
-  Settings2, Plus, Sparkles, Image as ImageIcon, CalendarCheck, HelpCircle, FileCheck, Trash, PlusCircle,
+  Settings2, Plus, Image as ImageIcon, CalendarCheck, HelpCircle, FileCheck, Trash, PlusCircle,
   Briefcase, Send, Clock, AlertCircle, Share2, Upload
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -117,7 +117,7 @@ export default function DashboardModelView({
             <img 
               referrerPolicy="no-referrer"
               src={currentUser.avatar} 
-              alt={currentUser.name} 
+              alt={currentUser.full_name} 
               className="w-20 h-20 rounded-2xl object-cover ring-2 ring-indigo-500/20 border"
             />
             <div className="space-y-1">
@@ -125,7 +125,7 @@ export default function DashboardModelView({
                 Model Registry Account
               </span>
               <h1 className="text-2xl font-black text-slate-900 dark:text-white font-sans">
-                {currentUser.name}
+                {currentUser.full_name}
               </h1>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-slate-500 font-medium">
                 {modelProfile && (
@@ -325,7 +325,7 @@ export default function DashboardModelView({
             </section>
 
             <div className="bg-indigo-600 rounded-3xl p-6 text-white shadow-xl shadow-indigo-600/20">
-                <Sparkles className="w-8 h-8 mb-4 text-indigo-200" />
+                <Briefcase className="w-8 h-8 mb-4 text-indigo-200" />
                 <h3 className="text-lg font-bold mb-2">Get Verified</h3>
                 <p className="text-xs text-indigo-100 mb-6 leading-relaxed">Verified models get 5x more visibility and higher response rates from luxury brand clients.</p>
                 <button className="w-full py-3 bg-white text-indigo-600 text-xs font-bold rounded-xl shadow-lg cursor-pointer">Verify My Account</button>

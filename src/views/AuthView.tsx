@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AppScreen, User } from '../types';
 import { 
-  Lock, Mail, User as UserIcon, Sparkles, Key, 
+  Lock, Mail, User as UserIcon, Key, 
   AlertCircle, RefreshCw, Globe, ArrowLeft
 } from 'lucide-react';
 import { signUpWithEmail, loginWithEmail, loginWithGoogle, resetPassword, getFirebaseErrorMessage, getRedirectResultHandler } from '../lib/firebase';
@@ -36,8 +36,9 @@ export default function AuthView({
         const fbUser = result.user;
         const authenticatedUser: User = {
           id: fbUser.uid,
-          name: fbUser.displayName || name || 'User',
+          full_name: fbUser.displayName || name || 'User',
           email: fbUser.email || email,
+          auth_provider: 'google',
           roles: ['user'],
           activeRole: 'user',
           avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUser.uid}`,
@@ -45,7 +46,7 @@ export default function AuthView({
           firebaseUid: fbUser.uid,
         };
         if (mode === 'login') {
-          onAuthenticate(authenticatedUser);
+    onAuthenticate(authenticatedUser, { isNewSignup: true });
         } else {
           setEmail(fbUser.email || '');
           setName(fbUser.displayName || '');
@@ -66,8 +67,9 @@ export default function AuthView({
       const fbUser = await loginWithGoogle();
       const authenticatedUser: User = {
         id: fbUser.uid,
-        name: fbUser.displayName || name || 'User',
+        full_name: fbUser.displayName || name || 'User',
         email: fbUser.email || email,
+        auth_provider: 'google',
         roles: ['user'],
         activeRole: 'user',
         avatar: fbUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${fbUser.uid}`,
@@ -144,8 +146,9 @@ export default function AuthView({
 
       const authenticatedUser: User = {
         id: uid,
-        name: name.trim(),
+        full_name: name.trim(),
         email: email.trim().toLowerCase(),
+        auth_provider: 'email',
         roles: ['user'],
         activeRole: 'user',
         avatar,
@@ -153,7 +156,7 @@ export default function AuthView({
         firebaseUid: uid,
       };
 
-      onAuthenticate(authenticatedUser);
+      onAuthenticate(authenticatedUser, { isNewSignup: true });
       setLoading(false);
     } catch (err: any) {
       setErrorMsg(getFirebaseErrorMessage(err));
@@ -180,8 +183,9 @@ export default function AuthView({
   const handleFallbackAuth = () => {
     const authenticatedUser: User = {
       id: 'u_' + Math.random().toString(36).substring(2, 9),
-      name: name.trim(),
+      full_name: name.trim(),
       email: email.trim().toLowerCase(),
+      auth_provider: 'email',
       roles: ['user'],
       activeRole: 'user',
       avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
