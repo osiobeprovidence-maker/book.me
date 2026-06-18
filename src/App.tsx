@@ -57,13 +57,22 @@ function AppContent() {
         const base = mapFirebaseUser(firebaseUser);
         let existingUser = localDB.getActiveUser();
         // Migrate old-format user
-        if (existingUser && !existingUser.roles && existingUser.role) {
-          const oldRole = existingUser.role;
-          delete existingUser.role;
-          if (oldRole === 'model') { existingUser.roles = ['model']; existingUser.activeRole = 'model'; }
-          else if (oldRole === 'admin') { existingUser.roles = ['admin']; existingUser.activeRole = 'admin'; }
-          else { existingUser.roles = ['user']; existingUser.activeRole = 'user'; }
-          localDB.setActiveUser(existingUser);
+        if (existingUser) {
+          let changed = false;
+          if (existingUser.name && !existingUser.full_name) {
+            existingUser.full_name = existingUser.name;
+            delete existingUser.name;
+            changed = true;
+          }
+          if (!existingUser.roles && existingUser.role) {
+            const oldRole = existingUser.role;
+            delete existingUser.role;
+            if (oldRole === 'model') { existingUser.roles = ['model']; existingUser.activeRole = 'model'; }
+            else if (oldRole === 'admin') { existingUser.roles = ['admin']; existingUser.activeRole = 'admin'; }
+            else { existingUser.roles = ['user']; existingUser.activeRole = 'user'; }
+            changed = true;
+          }
+          if (changed) localDB.setActiveUser(existingUser);
         }
         if (existingUser?.id === base.id) {
           setCurrentUser(existingUser);
@@ -96,7 +105,16 @@ function AppContent() {
 
     // Migrate old-format users (singular `role`) to new format (`roles` + `activeRole`)
     const migrateUser = (u: any) => {
-      if (u && !u.roles && u.role) {
+      if (!u) return u;
+      // Migrate name -> full_name
+      if (u.name && !u.full_name) {
+        u.full_name = u.name;
+        delete u.name;
+      } else if (!u.full_name) {
+        u.full_name = 'User';
+      }
+      // Migrate role -> roles + activeRole
+      if (!u.roles && u.role) {
         const oldRole = u.role;
         delete u.role;
         if (oldRole === 'model') {
@@ -109,7 +127,7 @@ function AppContent() {
           u.roles = ['user'];
           u.activeRole = 'user';
         }
-      } else if (u && !u.roles) {
+      } else if (!u.roles) {
         u.roles = ['user'];
         u.activeRole = 'user';
       }
